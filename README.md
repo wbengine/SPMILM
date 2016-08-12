@@ -3,10 +3,16 @@
 This toolkits includes the state-of-the-art LM methods and scripts for LM training, testing and nbest list rescoring.
 This toolkits can be directly used to the evaulation different LMs by rescoring nbest list and to compare the speech recognition WER.
  
+
 The LM in this toolkits includes:
+
 1. LSTM: the Long Short-Term Memory nerual network language models. 
   * The source codes are released by Wojciech Zaremba at https://github.com/wojzaremba/lstm. We extand the code to make it easy to nbest rescoring. We evaulate LSTM in several datasets including PTM and WSJ0. 
   * Please install Torch http://torch.ch/ before using this LSTM toolkits.
+
+2. TRF: the trans-dimensional random fields models
+  * See ''Trans-dimensional random fields for language modeling, ACL2015'' for more details
+
 
 The package are originazed as follows:
 ```
