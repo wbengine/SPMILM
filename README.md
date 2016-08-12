@@ -9,13 +9,15 @@ The LM in this toolkits includes:
   * Please install Torch http://torch.ch/ before using this LSTM toolkits.
 
 The package are originazed as follows:
+```
 -tools
 -tools/lstm
 -egs
 -egs/ptb_wsj0
 -egs/chime4
+```
 
-'tools' includes all the toolkits include LSTM. 
-'egs' includes all the experiments data, including scripts (written by python) and data (lm training corpus and nbest list used to rescore)
-'egs/ptb_wsj0': Training LMs on PTB dataset and evaulate the WER on WSJ0 nbest list. See: Trans-dimensional random fields for language modeling, ACL2015
-'egs/chime4': Run chime4 experiments. 
+- 'tools' includes all the toolkits include LSTM. 
+- 'egs' includes all the experiments data, including scripts (written by python) and data (lm training corpus and nbest list used to rescore)
+- 'egs/ptb_wsj0': Training LMs on PTB dataset and evaulate the WER on WSJ0 nbest list. See: Trans-dimensional random fields for language modeling, ACL2015
+- 'egs/chime4': Run chime4 experiments. 
