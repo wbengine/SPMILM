@@ -15,7 +15,5 @@
 
 #egs
 /egs/*
-!/egs/ptb_wsj0/*.py
-!/egs/ptb_wsj0/data
+!/egs/ptb_wjs0/*.py
 !/egs/chime4/*.py
-!/egs/chime4/data

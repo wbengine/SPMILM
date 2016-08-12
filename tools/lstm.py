@@ -7,8 +7,8 @@ import numpy as np
 def GetVocab(fname, v):
   f = open(fname, 'rt')
   for line in f:
-    a = line.split()
-    a.append('<eos>') # sentence tail symbol
+    a = line.upper().split()
+    a.append('<eos>'.upper()) # sentence tail symbol
     for w in a:
       v.setdefault(w, 0)
       v[w] += 1
@@ -17,11 +17,12 @@ def GetVocab(fname, v):
 
 # trans txt corpus to id corpus
 def CorpusToID(fread, fwrite, v):
+  print('[txt] ' + fread + ' -> ' + fwrite)
   f1 = open(fread, 'rt')
   f2 = open(fwrite, 'wt')
   for line in f1:
-    a = line.split()
-    a.append('<eos>') # sentence tail symbol
+    a = line.upper().split()
+    a.append('<eos>'.upper()) # sentence tail symbol
     for w in a:
       f2.write('{} '.format(v[w]))
     f2.write('\n')
@@ -47,10 +48,11 @@ def ReadVocab(fname):
 
 # trans nbest list to id files
 def GetNbest(ifile, ofile, v, unk = '<UNK>'):
+  print('[nbest] ' + ifile + ' -> ' + ofile)
   fin = open(ifile, 'rt')
   fout = open(ofile, 'wt')
   for line in fin:
-    a = line.split()[1:]
+    a = line.upper().split()[1:]
     a.append('<eos>'.upper())
     for w in a:
       nid = v[unk]
@@ -95,6 +97,19 @@ def train(workdir, train, valid, test):
   print(cmd)
   os.system(cmd)
   return write_model
+
+# calculate the PPL of given files
+def ppl(workdir, txt):
+  read_vocab = workdir + 'vocab'
+  read_model = workdir + 'small.lstm'
+  read_txt = txt
+  
+  v = ReadVocab(read_vocab)
+  write_txt = workdir + read_txt.split('/').pop() + '.pplid'
+  CorpusToID(read_txt, write_txt, v)
+  cmd = 'th main.lua -vocab {} -read {} -test {}'.format(read_vocab, read_model, write_txt)
+  os.system(cmd)
+  
   
 # rescore the nbest list and get the lmscore, input the txt nbest file
 def rescore(workdir, nbest, lmscore):
