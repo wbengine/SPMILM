@@ -1,0 +1,3 @@
+This WSJ0 transcripts are copyrighted/all rights reserved by LDC WSJ data corpus
+at https://catalog.ldc.upenn.edu/LDC93S6B
+We thank LDC to allow us to redistribute this transcripts.
