@@ -310,6 +310,7 @@ local function main()
   
   params.max_max_epoch = tonumber(arg_value('-epoch', '10'))
   params.rnn_size = tonumber(arg_value('-hidden', '200'))
+  params.dropout = tonumber(arg_value('-dropout', '0'))
   local corpus_vocab = arg_value('-vocab', nil)
   local corpus_train = arg_value('-train', nil)
   local corpus_valid = arg_value('-valid', nil)
@@ -398,7 +399,7 @@ local function main()
   if corpus_test ~= nil then run_test() end
   
   -- get the nbest lis
-  if lm_score ~= nil then run_nbest(lm_score, vocab['<eos>'])  end
+  if lm_score ~= nil then run_nbest(lm_score, (vocab['<eos>']==nil and vocab['<EOS>'] or vocab['<eos>']))  end
   
   -- write model
   if lm_write ~= nil then  write_param(lm_write) end

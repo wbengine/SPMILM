@@ -102,6 +102,14 @@ namespace wb
 					lout_error("no legal file name after -log");
 				}
 			}
+			else if (strcmp(plabel, "--") == 0) { // read from the config file
+				if (pvalue) {
+					Parse(pvalue);
+				}
+				else {
+					lout_error("no configuration file name after --");
+				}
+			}
 			else {
 				lout_error("Unknown label: " << plabel);
 			}
@@ -185,6 +193,8 @@ namespace wb
 		while (file.getline(strline, maxlength)) {
 			char *pLabel = strtok(strline, "= \t");
 			char *pContent = strtok(NULL, "= \t");
+			if (pLabel == NULL)
+				continue;
 			Parse(pLabel, pContent);
 			nActiveOptNum++;
 		}

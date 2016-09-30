@@ -40,6 +40,7 @@ using namespace wb;
 #include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <omp.h>
 using namespace std;
 
 /// define the main function

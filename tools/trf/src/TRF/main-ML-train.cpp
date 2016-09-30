@@ -26,7 +26,7 @@ char *cfg_pathVocab = NULL;
 
 int cfg_nFeatOrder = 2;
 int cfg_nHNode = 2;
-int cfg_nMaxLen = 10;
+int cfg_nMaxLen = 0;
 
 char *cfg_pathTrain = NULL;
 char *cfg_pathValid = NULL;
@@ -54,7 +54,7 @@ _wbMain
 	opt.Add(wbOPT_INT, "iter", &cfg_nIterTotalNum, "iter total number");
 	opt.Add(wbOPT_INT, "thread", &cfg_nThread, "The thread number");
 
-	opt.Parse();
+	opt.Parse(_argc, _argv);
 
 	lout << "*********************************************" << endl;
 	lout << "         TRF_train.exe { by Bin Wang }        " << endl;
@@ -66,12 +66,12 @@ _wbMain
 	Title::SetGlobalTitle(String(cfg_pathModelWrite).FileName());
 
 	Vocab *pv = new Vocab(cfg_pathVocab);
-	Model m(pv, 10);
+	Model m(pv, 0);
 	if (cfg_pathModelRead) {
 		m.ReadT(cfg_pathModelRead);
 	}
 	else {
-		m.LoadFromCorpus(cfg_pathTrain, cfg_nFeatOrder);
+		m.LoadFromCorpus(cfg_pathTrain, NULL, cfg_nFeatOrder);
 	}
 	m.WriteT(cfg_pathModelWrite);
 

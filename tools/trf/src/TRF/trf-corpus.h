@@ -97,6 +97,39 @@ namespace trf
 		void RandomIdx(int nNum);
 	};
 
-	
-
+	/**
+	 * \class
+	 * \brief a random sequence, used to select random sequence
+	 */
+	template <class Type>
+	class RandSeq
+	{
+	protected:
+		Array<Type> m_aSeq;
+		int m_nCur;
+	public:
+		RandSeq() :m_nCur(0) {}
+		RandSeq(Array<Type> &a) : m_nCur(0) { m_aSeq.Copy(a); }
+		/// Random the sequence
+		void Random() {
+			int len = m_aSeq.GetNum();
+			for (int i = 0; i < len; i++) {
+				int s = rand() % (len - i);
+				//exchange i+s and i positions
+				int temp = m_aSeq[i + s];
+				m_aSeq[i + s] = m_aSeq[i];
+				m_aSeq[i] = temp;
+			}
+			m_nCur = 0; // reset the current position
+		}
+		/// add a value
+		void Add(Type t) { m_aSeq.Add(t); }
+		/// Get a value
+		Type Get() { 
+			if (m_nCur >= m_aSeq.GetNum()) {
+				Random();
+			}
+			return m_aSeq[m_nCur++];
+		}
+	};
 }

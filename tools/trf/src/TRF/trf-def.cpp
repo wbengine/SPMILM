@@ -19,6 +19,33 @@
 
 namespace trf
 {
+
+	int omp_rand(int thread_num)
+	{
+#ifdef __linux
+		static unsigned int s_states[128];
+		if (thread_num == -1) {
+
+			return rand_r(&s_states[omp_get_thread_num()]);
+		}
+		else {
+			if (thread_num > 128) {
+				lout_error("[Rand] Can not support to many thread (Over 128)");
+			}
+			lout << "[Rand] Initial State" << endl;
+			srand(time(NULL));
+			for (int i = 0; i < thread_num; i++) {
+				s_states[i] = rand();
+			}
+		}
+#else
+		if (thread_num != -1) {
+			srand(time(NULL));
+		}
+		return rand();
+#endif
+	}
+
 	/************************************************************************/
 	/* The definition of sampling function                                  */
 	/************************************************************************/
@@ -34,7 +61,7 @@ namespace trf
 	}
 	int LogLineSampling(const LogP* pdProbs, int nNum)
 	{
-		double d = 1.0 * rand() / RAND_MAX;
+		double d = 1.0 * omp_rand() / RAND_MAX;
 		int sX = 0;
 		double dSum = 0;
 
@@ -75,7 +102,7 @@ namespace trf
 	}
 	int LineSampling(const Prob* pdProbs, int nNum)
 	{
-		double d = 1.0 * rand() / RAND_MAX;
+		double d = 1.0 * omp_rand() / RAND_MAX;
 		int sX = 0;
 		double dSum = 0;
 
@@ -99,7 +126,7 @@ namespace trf
 	}
 	bool Acceptable(Prob prob)
 	{
-		double d = 1.0 * rand() / RAND_MAX;
+		double d = 1.0 * omp_rand() / RAND_MAX;
 		return d <= prob;
 	}
 	void RandomPos(int *a, int len, int n)
@@ -117,10 +144,14 @@ namespace trf
 		}
 	}
 
-	double Rand(double dmin, double dmax)
+	double dRand(double dmin, double dmax)
 	{
 		double d = 1.0 * rand() / RAND_MAX;
 		return  d*(dmax - dmin) + dmin;
+	}
+	int omp_nrand(int nMin, int nMax)
+	{
+		return omp_rand() % (nMax - nMin) + nMin;
 	}
 
 	void EasySmooth(Prob *p, int num, Prob threshold /*= 1e-5*/)

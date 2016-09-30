@@ -161,6 +161,7 @@ namespace wb
 		MatShell<T> operator[] (int x) { return MatShell<T>(m_pBuf + x*m_nYDim*m_nZDim, m_nYDim, m_nZDim); }
 		void Write(File &file);
 		void Read(File &file);
+		bool operator== (Mat3dShell &m);
 	};
 
 	template <class T>
@@ -478,6 +479,18 @@ namespace wb
 			// ����
 			file.Scanf("\n");
 		}
+	}
+	template <class T>
+	bool Mat3dShell<T>::operator==(Mat3dShell<T> &m)
+	{
+		if (m_nXDim != m.m_nXDim || m_nYDim != m.m_nYDim || m_nZDim != m.m_nZDim)
+			return false;
+		
+		for (int i = 0; i < GetSize(); i++) {
+			if (m_pBuf[i] != m.m_pBuf[i])
+				return false;
+		}
+		return true;
 	}
 	template <class T>
 	void Mat3d<T>::Reset(int xdim/* =0 */, int ydim/* =0 */, int zdim/* =0 */)

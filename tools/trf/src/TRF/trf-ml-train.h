@@ -40,7 +40,6 @@ namespace trf
 		Vec<Prob> m_trainPi;  ///< the length distribution in training corpus
 
 		Vec<double> m_vEmpiricalExp; ///< the empirical expectation
-
 	public: 
 		const char *m_pathOutputModel; ///< Write to model during iteration
 

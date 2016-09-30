@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include <omp.h>
 #ifndef __linux
 #include <conio.h>
 #endif
@@ -110,9 +111,9 @@ namespace wb
 		static double ToSecond(clock_t t)
 		{
 #ifdef __linux
-			return 1.0*t / CLOCKS_PER_SEC;
+			return 1.0*t / omp_get_max_threads() / CLOCKS_PER_SEC;
 #else
-			return 1.0*t / 1000;
+			return 1.0*t / CLOCKS_PER_SEC;
 #endif
 		}
 	};

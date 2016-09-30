@@ -57,6 +57,12 @@ namespace trf
 
 			nLen = p_len;
 		}
+		/// copy the sequence
+		void Copy(Seq &seq) {
+			x.Copy(seq.x);
+			nLen = seq.nLen;
+			nMaxLen = seq.nMaxLen;
+		}
 		int GetLen() const { return nLen; }
 		/// transform the word sequence (form file) to Seq
 		void Set(Array<int> &aInt, Vocab *pv);
@@ -158,6 +164,10 @@ namespace trf
 		void ReadT(File &file, PValue *pValue = NULL);
 		/// Write to file
 		void WriteT(File &file, PValue *pValue = NULL);
+// 		/// Read from binary
+// 		void ReadB(File &file);
+// 		/// Write to binary
+// 		void WriteB(File &file);
 	};
 
 	/// include all the feature table

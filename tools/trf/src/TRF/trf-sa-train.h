@@ -83,7 +83,7 @@ namespace trf
 		Mat<double> m_matSampleLen; ///< the length count of sample of each thread
 
 		Vec<double> m_vEmpiricalVar; ///< empirical variance 
-		double m_fEmpiricalVarGap; ///< a varicance gap used in gradient sacling
+		double m_var_gap; ///< a varicance gap used in gradient sacling
 
 	public:
 		double m_fRegL2; ///< l2 regularization
@@ -103,18 +103,15 @@ namespace trf
 		File m_fsamp; ///< output all the samples
 		File m_ftrain;///< output all the training sequences
 
-		String m_modelDir;
 
 	public:
 		SAfunc() :m_nMiniBatchSample(100) {
-			m_modelDir = "temp_model";
-			m_fEmpiricalVarGap = 1;
+			m_var_gap = 1e-15;
 			m_fRegL2 = 0;
 		};
 		SAfunc(Model *pModel, CorpusBase *pTrain, CorpusBase *pValid = NULL, CorpusBase *pTest = NULL, int nMinibatch = 100 )
 		{
-			m_modelDir = "temp_model";
-			m_fEmpiricalVarGap = 1;
+			m_var_gap = 1e-15;
 			m_fRegL2 = 0;
 			Reset(pModel, pTrain, pValid, pTest, nMinibatch);
 		}
@@ -183,17 +180,16 @@ namespace trf
 		double m_gamma_zeta;
 
 	public:
-
 		LearningRate m_gain_lambda;
 		LearningRate m_gain_zeta;
+		//double m_zeta_upgap; ///< the gap for zeta update
 
 		bool m_bUpdate_lambda;
 		bool m_bUpdate_zeta;
+		double m_dir_gap; ///< control the dir values
 
 		int m_nAvgBeg; ///< if >0, then calculate the average
-
 		float m_fEpochNun; ///< the current epoch number - double
-
 		int m_nPrintPerIter;  ///< output the LL per iteration, if ==-1, the disable
 		wb::Array<int> m_aWriteAtIter; ///< output temp model at some iteration
 
@@ -204,10 +200,12 @@ namespace trf
 
 			m_gamma_lambda = 1;
 			m_gamma_zeta = 1;
+			//m_zeta_upgap = 10;
 
 
 			m_bUpdate_lambda = true;
 			m_bUpdate_zeta = true;
+			m_dir_gap = 1.0;
 
 			m_nAvgBeg = 0;
 

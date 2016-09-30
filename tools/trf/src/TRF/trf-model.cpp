@@ -623,8 +623,9 @@ namespace trf
 		m_logz[nLen] = logz;
 		return logz;
 	}
-	void Model::AISNormalize(int nChain, int nInter)
+	void Model::AISNormalize(int nLenMin, int nLenMax, int nChain, int nInter)
 	{
+		lout << "AIS norm len form " << nLenMin << " to " << nLenMax << endl;
 		int nParamsNum = GetParamNum();
 
 		Vec<PValue> vParamsPn(nParamsNum);
@@ -680,7 +681,7 @@ namespace trf
 			pInterModel->SetParam(pParamsCur);
 
 #pragma omp parallel for
-			for (int nLen = 1; nLen <= m_maxlen; nLen++) { // for each length
+			for (int nLen = nLenMin; nLen <= nLenMax; nLen++) { // for each length
 				for (int k = 0; k < nChain; k++) { // for each chain
 					/* compute the weight */
 					LogP rate = pInterModel->GetLogProb(*matSeq[nLen][k], false) - matLogPOld[nLen][k];
@@ -704,7 +705,7 @@ namespace trf
 			}
 		}
 
-		for (int nLen = 1; nLen <= m_maxlen; nLen++) {
+		for (int nLen = nLenMin; nLen <= nLenMax; nLen++) {
 			LogP logz = Log_Sum(matLogWeight[nLen].GetBuf(), matLogWeight[nLen].GetSize()) - Prob2LogP(nChain);
 			m_logz[nLen] = logz;
 			lout << "logz[" << nLen << "] = " << logz << endl;

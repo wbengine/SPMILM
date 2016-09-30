@@ -166,6 +166,7 @@ namespace wb
 			return String(m_pBuffer, p - m_pBuffer);
 		return String(m_pBuffer);
 	}
+
 	char *String::Toupper()
 	{
 		char *p = m_pBuffer;

@@ -38,6 +38,8 @@ char *cfg_writeTestID = NULL;
 char *cfg_norm_method = NULL;
 int cfg_nAIS_chain_num = 0;
 int cfg_nAIS_inter_num = 0;
+int cfg_norm_lenmin = 1;
+int cfg_norm_lenmax = -1;
 
 char *cfg_pathLenFile = NULL;
 
@@ -80,6 +82,8 @@ _wbMain
 	opt.Add(wbOPT_STRING, "norm-method", &cfg_norm_method, "[Norm] method: Exact or AIS");
 	opt.Add(wbOPT_INT, "AIS-chain", &cfg_nAIS_chain_num, "[AIS] the chain number");
 	opt.Add(wbOPT_INT, "AIS-inter", &cfg_nAIS_inter_num, "[AIS] the intermediate distribution number");
+	opt.Add(wbOPT_INT, "norm-len-min", &cfg_norm_lenmin, "[Norm] min-length");
+	opt.Add(wbOPT_INT, "norm-len-max", &cfg_norm_lenmax, "[Norm] max-length");
 
 	opt.Add(wbOPT_STRING, "len-file", &cfg_pathLenFile, "[Revise pi] a txt-id-file used to summary pi");
 
@@ -92,7 +96,7 @@ _wbMain
 
 	omp_set_num_threads(cfg_nThread);
 	lout << "[OMP] omp_thread = " << omp_get_max_threads() << endl;
-	srand(time(NULL));
+	omp_rand(cfg_nThread);
 
 	/// read model
 	Vocab v(cfg_pathVocab);
@@ -263,14 +267,15 @@ void ModelNorm(Model &m, const char *type)
 		srand(time(NULL));
 
 		lout_variable(m.ExactNormalize(1));
-// 		for (int nLen = 1; nLen <= m.GetMaxLen(); nLen++)
+		cfg_norm_lenmax = (cfg_norm_lenmax == -1) ? m.GetMaxLen() : cfg_norm_lenmax;
+// 		for (int nLen = cfg_norm_lenmin; nLen <= cfg_norm_lenmax; nLen++)
 // 		{
 // 			lout_exe << "nLen = " << nLen << "/" << m.GetMaxLen() << ": ";
 // 			m.AISNormalize(nLen, cfg_nAIS_chain_num, cfg_nAIS_inter_num);
 // 			//cutrf::cudaModelAIS(m, nLen, cfg_nAIS_chain_num, cfg_nAIS_inter_num);
 // 			lout << endl;
 // 		}
-		m.AISNormalize(cfg_nAIS_chain_num, cfg_nAIS_inter_num);
+		m.AISNormalize(cfg_norm_lenmin, cfg_norm_lenmax, cfg_nAIS_chain_num, cfg_nAIS_inter_num);
 	}
 	else {
 		lout_error("Unknown method: " << type);

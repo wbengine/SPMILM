@@ -380,6 +380,7 @@ namespace trf
 		}
 		lout_assert(outnum == m_nNum);
 	}
+
 	void Feat::Reset(int nOrder, bool bClass)
 	{
 		/// add the styles

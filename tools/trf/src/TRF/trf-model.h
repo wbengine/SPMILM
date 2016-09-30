@@ -59,7 +59,7 @@ namespace trf
 		Mat<Prob> m_matLenJump; ///< [sample] used to propose a new length
 		int m_maxSampleLen; ///< [sample] the maximum sample length, default = m_maxlen + 2
 
-	private:
+	protected:
 		AlgNode m_AlgNode; ///< the  forward-backward calculation each node
 
 	public:
@@ -128,6 +128,10 @@ namespace trf
 		void ReadT(const char *pfilename);
 		/// Write Model
 		void WriteT(const char *pfilename);
+		/// Read Binary
+// 		void ReadB(const char *pfilename);
+// 		/// Write Binary
+// 		void WriteB(const char *pfilename);
 
 		/************************************************************************/
 		/*exactly calculation functions                                         */
@@ -157,7 +161,7 @@ namespace trf
 		/// [sample] Local Jump - sample a new length
 		void LocalJump(Seq &seq);
 		/// [sample] Markov Move - perform the gibbs sampling
-		void MarkovMove(Seq &seq);
+		virtual void MarkovMove(Seq &seq);
 		/// [sample] Propose the length, using the variable m_matLenJump
 		LogP ProposeLength(int nOld, int &nNew, bool bSample);
 		/// [sample] Propose the c_{i} at position i. Then return the propose probability R(c_i|h_i,c_{other})
@@ -191,6 +195,146 @@ namespace trf
 	public:
 		/// perform AIS to calculate the normalization constants, return the logz of given length
 		LogP AISNormalize(int nLen, int nChain, int nInter);
-		void AISNormalize(int nChain, int nInter);
+		void AISNormalize(int nLenMin, int nLenMax, int nChain, int nInter);
+	};
+
+	/**
+	 * \class Model_FastSample
+	 * \brief TRF model, revise the sample method to speedup the MCMC
+	 */
+	class Model_FastSample : public Model
+	{
+	public:
+		int m_nMHtimes;
+	public:
+		Model_FastSample(Vocab *pv) :Model(pv) {
+			m_nMHtimes = 1;
+		}
+		Model_FastSample(Vocab *pv, int maxlen) :Model(pv, maxlen) {
+			m_nMHtimes = 1;
+		}
+		LogP ProposeW0(VocabID &wi, Seq &seq, int nPos, bool bSample = true)
+		{
+			Array<VocabID> *pXs = m_pVocab->GetWord(seq.x[class_layer][nPos]);
+			Array<LogP> aLogps;
+
+			VocabID nSaveX = seq.x[word_layer][nPos]; // save w[nPos]
+			for (int i = 0; i < pXs->GetNum(); i++) {
+				seq.x[word_layer][nPos] = pXs->Get(i);
+
+// 				LogP d = 0;
+// 				Array<int> afeat;
+// 				m_pFeat->Find(afeat, seq, nPos, 1);
+// 				for (int i = 0; i < afeat.GetNum(); i++)
+// 					d += m_value[afeat[i]];
+				aLogps[i] = 1; //GetReducedModelForW(seq, nPos);
+			}
+			seq.x[word_layer][nPos] = nSaveX;
+			LogLineNormalize(aLogps, pXs->GetNum());
+
+			int idx;
+			if (bSample) {
+				/* sample a value for x[nPos] */
+				idx = LogLineSampling(aLogps, pXs->GetNum());
+				wi = pXs->Get(idx);
+			}
+			else {
+				idx = pXs->Find(nSaveX); // find nSave in the array.
+				if (idx == -1) {
+					lout_error("Can't find the VocabID(" << nSaveX << ") in the array.\n"
+						<< "This may beacuse word(" << nSaveX << ") doesnot belongs to class("
+						<< seq.x[class_layer][nPos] << ")");
+				}
+			}
+			
+			return aLogps[idx];
+		}
+
+		void ProposeCProbs(VecShell<LogP> &logps, Seq &seq, int nPos)
+		{
+			VocabID savecid = seq.x[class_layer][nPos];
+			for (int cid = 0; cid < m_pVocab->GetClassNum(); cid++) {
+				seq.x[class_layer][nPos] = cid;
+				logps[cid] = 1;
+			}
+			seq.x[class_layer][nPos] = savecid;
+			LogLineNormalize(logps.GetBuf(), m_pVocab->GetClassNum());
+		}
+
+		void MarkovMove(Seq &seq)
+		{
+			for (int i = 0; i < seq.GetLen(); i++)
+				SamplePos(seq, i);
+		}
+		void SamplePos(Seq &seq, int nPos)
+		{
+			for (int times = 0; times < m_nMHtimes; times++) 
+			{
+
+				VocabID old_c = seq.x[class_layer][nPos];
+				VocabID old_w = seq.x[word_layer][nPos];
+				LogP pold = GetReducedModel(seq, nPos);
+
+
+				VocabID prop_c = omp_nrand(0, m_pVocab->GetClassNum());
+				Array<VocabID> *pWords = m_pVocab->GetWord(prop_c);
+				int prop_w_id = omp_nrand(0, pWords->GetNum());
+				VocabID prop_w = pWords->Get(prop_w_id);
+
+				seq.x[class_layer][nPos] = prop_c;
+				seq.x[word_layer][nPos] = prop_w;
+				LogP pnew = GetReducedModel(seq, nPos);
+
+				LogP g_old = Prob2LogP(1.0 / m_pVocab->GetClassNum()) + Prob2LogP(1.0 / m_pVocab->GetWord(old_c)->GetNum());
+				LogP g_new = Prob2LogP(1.0 / m_pVocab->GetClassNum()) + Prob2LogP(1.0 / m_pVocab->GetWord(prop_c)->GetNum());
+				LogP acclogp = pnew + g_old - (pold + g_new);
+
+				if (Acceptable(LogP2Prob(acclogp))) {
+					m_nSampleHAccTimes++;
+					seq.x[class_layer][nPos] = prop_c;
+					seq.x[word_layer][nPos] = prop_w;
+				}
+				else {
+					seq.x[class_layer][nPos] = old_c;
+					seq.x[word_layer][nPos] = old_w;
+				}
+				m_nSampleHTotalTimes++;
+
+				lout_assert(seq.x[class_layer][nPos] == m_pVocab->GetClass(seq.x[word_layer][nPos]));
+			}
+
+// 			Vec<LogP> vlogps_c(m_pVocab->GetClassNum());
+// 			ProposeCProbs(vlogps_c, seq, nPos);
+// 			VocabID ci = seq.x[class_layer][nPos];
+// 			VocabID C0 = LogLineSampling(vlogps_c.GetBuf(), vlogps_c.GetSize());
+// 			LogP gci = vlogps_c[ci];
+// 			LogP gc0 = vlogps_c[C0];
+// 
+// 			VocabID wi = seq.x[word_layer][nPos];
+// 			VocabID w0;
+// 			seq.x[class_layer][nPos] = ci;
+// 			LogP gwi_ci = ProposeW0(wi, seq, nPos, false);
+// 			seq.x[class_layer][nPos] = C0;
+// 			LogP gw0_c0 = ProposeW0(w0, seq, nPos, true);
+// 
+// 			seq.x[class_layer][nPos] = ci;
+// 			seq.x[word_layer][nPos] = wi;
+// 			LogP pold = GetReducedModel(seq, nPos);
+// 			seq.x[class_layer][nPos] = C0;
+// 			seq.x[word_layer][nPos] = w0;
+// 			LogP pnew = GetReducedModel(seq, nPos);
+// 			
+// 			LogP acclogp = pnew + gci + gwi_ci - (pold + gc0 + gw0_c0);
+// 			if (Acceptable(LogP2Prob(acclogp))) {
+// 				m_nSampleHAccTimes++;
+// 				seq.x[class_layer][nPos] = C0;
+// 				seq.x[word_layer][nPos] = w0;
+// 			}
+// 			else {
+// 				seq.x[class_layer][nPos] = ci;
+// 				seq.x[word_layer][nPos] = wi;
+// 			}
+// 			m_nSampleHTotalTimes++;
+		}
 	};
 }

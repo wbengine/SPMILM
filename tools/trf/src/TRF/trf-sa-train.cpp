@@ -81,21 +81,13 @@ namespace trf
 		m_nCDSampleTimes = 1;
 		m_nSASampleTimes = 1;
 		
-		// create dir
-		String strCmd = "md ";
-		strCmd += m_modelDir;
-		system(strCmd);
 	}
 	void SAfunc::PrintInfo()
 	{
 		lout << "[SAfunc] *** Info: *** " << endl;
 		lout << "  "; lout_variable(m_nMiniBatchSample);
-// 		lout << "  "; lout_variable(m_nCDSampleTimes);
-// 		lout << "  "; lout_variable(m_nSASampleTimes);
-		lout << "  "; lout_variable(m_fEmpiricalVarGap);
+		lout << "  "; lout_variable(m_var_gap);
 		lout << "  "; lout_variable(m_fRegL2);
-// 		lout << "  [AISConfig for Z]  nChain=" << m_AISConfigForZ.nChain << " nIter=" << m_AISConfigForZ.nInter << endl;
-// 		lout << "  [AISConfig for LL] nChain=" << m_AISConfigForP.nChain << " nIter=" << m_AISConfigForP.nInter << endl;
 		lout << "[SAfunc] *** [End] ***" << endl;
 	}
 	void SAfunc::RandSeq(Seq &seq, int nLen /* = -1 */)
@@ -221,7 +213,7 @@ namespace trf
 			
 			Array<int> aSeqId;
 			/// find all the sequence with length nLen
-			for (int i = 0; i > pCorpus->GetNum(); i++) {
+			for (int i = 0; i < pCorpus->GetNum(); i++) {
 				pCorpus->GetSeq(i, aSeq);
 				int nSeqLen = aSeq.GetNum();
 				if (nLen == m_pModel->GetMaxLen()) {
@@ -257,7 +249,7 @@ namespace trf
 			}
 
 
-			for (int i = 0; i < m_pModel->GetParamNum(); i++)
+			for (int i = 0; i < m_pModel->GetParamNum(); i++) 
 				vExpf2[i] -= pi[nLen] * pow(vExp_l[i], 2);  /// calcualte p[f^2] - \pi_l * p_l[f]^2
 
 			lout.Progress(nLen);
@@ -265,34 +257,44 @@ namespace trf
 
 		/// output the zero number
 		int nZero = 0;
+		int nDownGap = 0;
+		double dMinVarOverZero = 100;
 		for (int i = 0; i < m_nParamNum; i++) {
 			if (vExpf2[i] == 0)
 				nZero++;
+			else
+				dMinVarOverZero = min(vExpf2[i], dMinVarOverZero);
+
+			if (vExpf2[i] < m_var_gap) {
+				nDownGap++;
+				vExpf2[i] = m_var_gap;
+			}
+				
 		}
 		if (nZero > 0) {
-			lout_warning("[EmpiricalVar] Exist zero expectation ������ (zero-num=" << nZero << ")");
+			lout_warning("[EmpiricalVar] Exist zero expectation  (zero-num=" << nZero << ")");
 		}
+		lout << "[EmpiricalVar] the number of ( var < gap ) is " << nDownGap << endl;
+		lout << "[EmpiricalVar] min variance value (over 0) is " << dMinVarOverZero << endl;
 
 
 		///save
 		vVar.Copy(vExpf2);
 
-		//Qsort(vExpf2.GetBuf(), 0, vExpf2.GetSize() - 1);
-		qsort(vExpf2.GetBuf(), vExpf2.GetSize(), sizeof(vExpf2[0]), qsort_compare_double);
-// 		lout_variable(vExpf2[(int)(vExpf2.GetSize() * 0.8)]);
-// 		lout_variable(vExpf2[(int)(vExpf2.GetSize() * 0.85)]);
-// 		lout_variable(vExpf2[(int)(vExpf2.GetSize() * 0.9)]);
-// 		lout_variable(vExpf2[(int)(vExpf2.GetSize() * 0.95)]);
-		m_fEmpiricalVarGap = vExpf2[(int)(vExpf2.GetSize() * 0.99)];
-
 		// Write
 		if (m_fmean.Good()) {
 			lout << "Write Empirical Mean ..." << endl;
-			m_fmean.PrintArray("%f\n", m_vEmpiricalExp.GetBuf(), m_vEmpiricalExp.GetSize());
+			Vec<PValue> aLogExp(m_vEmpiricalExp.GetSize());
+			for (int i = 0; i < aLogExp.GetSize(); i++) aLogExp[i] = log(m_vEmpiricalExp[i]);
+			m_pModel->m_pFeat->WriteT(m_fmean, aLogExp.GetBuf());
+//			m_fmean.PrintArray("%f\n", m_vEmpiricalExp.GetBuf(), m_vEmpiricalExp.GetSize());
 		}
 		if (m_fvar.Good()) {
 			lout << "Write Empirical Var ..." << endl;
-			m_fvar.PrintArray("%f\n", vVar.GetBuf(), vVar.GetSize());
+			Vec<PValue> aLogVar(vVar.GetSize());
+			for (int i = 0; i < vVar.GetSize(); i++) aLogVar[i] = log(vVar[i]);
+			m_pModel->m_pFeat->WriteT(m_fvar, aLogVar.GetBuf());
+			//m_fvar.PrintArray("%f\n", vVar.GetBuf(), vVar.GetSize());
 		}
 	}
 
@@ -378,15 +380,14 @@ namespace trf
 		String strTempModel;
 		String strName = String(m_pathOutputModel).FileName();
 #ifdef __linux
-		strTempModel.Format("%s/%s.n%d.model", m_modelDir.GetBuffer(), strName.GetBuffer(), nEpoch);
+		strTempModel.Format("%s.n%d.model", strName.GetBuffer(), nEpoch);
 #else
-		strTempModel.Format("%s\\%s.n%d.model", m_modelDir.GetBuffer(), strName.GetBuffer(), nEpoch);
+		strTempModel.Format("%s.n%d.model", strName.GetBuffer(), nEpoch);
 #endif
 		// set the pi as the pi of training set
 		m_pModel->SetPi(m_trainPi.GetBuf());
 		m_pModel->WriteT(strTempModel);
-		m_pModel->SetParam(m_samplePi.GetBuf());
-		//m_pModel->WriteT(m_pathOutputModel);
+		m_pModel->SetPi(m_samplePi.GetBuf());
 	}
 	void SAfunc::GetGradient(double *pdGradient)
 	{
@@ -431,7 +432,7 @@ namespace trf
 		*/
 		for (int l = 0; l <= m_pModel->GetMaxLen(); l++) {
 			if (m_pModel->m_pi[l] > 0) {
-				pdGradient[nWeightNum + l] = min(10.0, m_vSampleLen[l] / m_pModel->m_pi[l]);
+				pdGradient[nWeightNum + l] =  m_vSampleLen[l] / m_pModel->m_pi[l];
 			}	
 			else {
 				pdGradient[nWeightNum + l] = 0;
@@ -688,11 +689,27 @@ namespace trf
 		for (int i = 0; i < nWeightNum; i++) {
 			pDir[i] = m_gamma_lambda * pGradient[i];
 		}
+
+		if (m_dir_gap > 0) {
+			int n_dgap_cutnum = 0;
+			for (int i = 0; i < nWeightNum; i++) {
+				if (pDir[i] > m_dir_gap) {
+					pDir[i] = m_dir_gap;
+					n_dgap_cutnum++;
+				}
+				else if (pDir[i] < -m_dir_gap) {
+					pDir[i] = -m_dir_gap;
+					n_dgap_cutnum++;
+				}
+			}
+			lout_variable_precent(n_dgap_cutnum, nWeightNum);
+		}
 		
 
 		// update zeta
 		for (int i = nWeightNum; i < nWeightNum + nZetaNum; i++) {
-			pDir[i] = m_gamma_zeta * pGradient[i];
+			// limit the update of zeta.
+			pDir[i] = min( m_gamma_zeta, 1.0*pSA->m_pModel->GetMaxLen()*pSA->m_pModel->m_pi[i-nWeightNum] ) * pGradient[i];
 		}
 	
 	}
@@ -735,6 +752,7 @@ namespace trf
 		lout << "[SATrain] *** Info: ***" << endl;
 		GAIN_INFO(m_gain_lambda);
 		GAIN_INFO(m_gain_zeta);
+		lout << "  " << "m_dir_gap=" << m_dir_gap << endl;
 		lout << "[SATrain] *** [End] ***" << endl;
 	}
 }

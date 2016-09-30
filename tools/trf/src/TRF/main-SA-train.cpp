@@ -46,6 +46,7 @@ bool cfg_bUnupdateZeta = false;
 int cfg_nAvgBeg = 0;
 
 float cfg_fRegL2 = 0;
+float cfg_dGap = 1.0f;
 
 bool cfg_bInitValue = false;
 int cfg_nPrintPerIter = 1;
@@ -79,10 +80,11 @@ _wbMain
 	opt.Add(wbOPT_TRUE, "unupdate-zeta", &cfg_bUnupdateZeta, "don't update zeta");
 	opt.Add(wbOPT_INT, "tavg", &cfg_nAvgBeg, ">0 then apply averaging");
 	opt.Add(wbOPT_FLOAT, "L2", &cfg_fRegL2, "regularization L2");
+	opt.Add(wbOPT_FLOAT, "dgap", &cfg_dGap, "the gap for update value at each iteration");
 
 	opt.Add(wbOPT_TRUE, "init", &cfg_bInitValue, "Re-init the parameters");
 	opt.Add(wbOPT_INT, "print-per-iter", &cfg_nPrintPerIter, "print the LL per iterations");
-	opt.Add(wbOPT_STRING, "write-at-iter", &cfg_strWriteAtIter, "write the LL per iteration, such as [1:100:1000]");
+	opt.Add(wbOPT_STRING, "write-at-iter", &cfg_strWriteAtIter, "write models at iteration, such as [1:100:1000]");
 
 	opt.Add(wbOPT_STRING, "write-mean", &cfg_pathWriteMean, "write the expecataion on training set");
 	opt.Add(wbOPT_STRING, "write-var", &cfg_pathWriteVar, "write the variance on training set");
@@ -94,9 +96,10 @@ _wbMain
 	lout << "\t" << __DATE__ << "\t" << __TIME__ << "\t" << endl;
 	lout << "**********************************************" << endl;
 
-	srand(time(NULL));
+	
 	omp_set_num_threads(cfg_nThread);
 	lout << "[OMP] omp_thread = " << omp_get_max_threads() << endl;
+	trf::omp_rand(cfg_nThread);
 	Title::SetGlobalTitle(String(cfg_pathModelWrite).FileName());
 
 	Vocab *pv = new Vocab(cfg_pathVocab);
@@ -107,42 +110,6 @@ _wbMain
 	else {
 		m.LoadFromCorpus(cfg_pathTrain, cfg_pathFeatStyle, cfg_nFeatOrder);
 	}
-
-	/**/
-// 	File fexp("test.exp", "wt");
-// 	File fsamp("test.samp", "wt");
-// 	int nLen = 5;
-// 	Seq seq(nLen);
-// 	seq.Random(pv);
-// 	Vec<double> exp1(m.GetParamNum()), exp2(m.GetParamNum());
-// 	Vec<double> pi1(m.GetMaxLen()+1), pi2(m.GetMaxLen()+1);
-// 	pi2.Fill(1.0 / m.GetMaxLen());
-// 	m.SetPi(pi2.GetBuf());
-// 
-// 	m.ExactNormalize();
-// 	lout << "Exact" << endl;
-// 	m.GetNodeExp(exp2.GetBuf());
-// 	fexp.PrintArray("%f ", exp2.GetBuf(), exp2.GetSize());
-// 	lout << "Sample" << endl;
-// 	exp1.Fill(0);
-// 	pi1.Fill(0);
-// 	for (int i = 1; i <= 10000; i++) {
-// 		m.Sample(seq);
-// 		m.FeatCount(seq, exp1.GetBuf());
-// 		pi1[seq.GetLen()]++;
-// 
-// 		seq.Print(fsamp);
-// 
-// 		if (i % 100 == 0) {
-// 			exp1 /= i;
-// 			fexp.PrintArray("%f ", exp1.GetBuf(), exp1.GetSize());
-// 			exp1 *= i;
-// 		}
-// 	}
-// 	pi1 /= 10000;
-// 	lout.output(pi1.GetBuf()+1, pi1.GetSize()-1) << endl;
-// 	return 1;
-	/**/
 
 	CorpusTxt *pTrain = (cfg_pathTrain) ? new CorpusTxt(cfg_pathTrain) : NULL;
 	CorpusTxt *pValid = (cfg_pathValid) ? new CorpusTxt(cfg_pathValid) : NULL;
@@ -158,7 +125,6 @@ _wbMain
 //   	func.m_fsamp.Open(String(cfg_pathModelWrite).FileName() + ".samp", "wt");
 //   	func.m_ftrain.Open(String(cfg_pathModelWrite).FileName() + ".train", "wt");
 	func.m_pathOutputModel = cfg_pathModelWrite;
-	func.m_fRegL2 = cfg_fRegL2;
 	func.Reset(&m, pTrain, pValid, pTest, cfg_nMiniBatch);
 	func.m_fRegL2 = cfg_fRegL2;
 	func.PrintInfo();
@@ -173,6 +139,7 @@ _wbMain
 	solve.m_bUpdate_zeta = !cfg_bUnupdateZeta;
 	solve.m_nAvgBeg = cfg_nAvgBeg;
 	solve.m_nPrintPerIter = cfg_nPrintPerIter;
+	solve.m_dir_gap = cfg_dGap;
 	VecUnfold(cfg_strWriteAtIter, solve.m_aWriteAtIter);
 	solve.PrintInfo();
 
