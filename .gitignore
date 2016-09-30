@@ -8,8 +8,10 @@
 .directory
 
 # tools
-/tools/rnn
-/tools/srilm
+/tools/rnn/*
+!/tools/rnn/rnnlm-0.3e
+/tools/srilm/*
+!/tools/srilm/srilm-1.7.1.tar.gz
 /tools/trf/bin
 
 
