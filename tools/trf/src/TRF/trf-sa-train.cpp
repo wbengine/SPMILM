@@ -298,10 +298,11 @@ namespace trf
 		}
 	}
 
-	void SAfunc::GetSampleExp(VecShell<double> &vExp, VecShell<double> &vLen)
+	void SAfunc::GetSampleExp(VecShell<double> &vExp, VecShell<double> &vExp2, VecShell<double> &vLen)
 	{
 		int nThread = omp_get_max_threads();
 		m_matSampleExp.Reset(nThread, m_pModel->GetParamNum());
+		m_matSampleExp2.Reset(nThread, m_pModel->GetParamNum());
 		m_matSampleLen.Reset(nThread, m_pModel->GetMaxLen() + 1);
 //		Vec<int> vNum(nThread); // record the sample number of each thread
 
@@ -324,14 +325,18 @@ namespace trf
 		for (int sample = 0; sample < m_nMiniBatchSample; sample++)
 		{
 			int tid = omp_get_thread_num();
+			Vec<double> aCurCount(m_pModel->GetParamNum());
 			m_pModel->Sample(*m_threadSeq[tid]);
 
 			int nLen = min(m_pModel->GetMaxLen(), m_threadSeq[tid]->GetLen());
-
-			//m_aSeqs[threadID]->Print();
-			m_pModel->FeatCount(*m_threadSeq[tid], m_matSampleExp[tid].GetBuf(), m_trainPi[nLen] / m_pModel->m_pi[nLen]);
+			
+			m_pModel->FeatCount(*m_threadSeq[tid], aCurCount.GetBuf(), m_trainPi[nLen] / m_pModel->m_pi[nLen]);
+			//m_pModel->FeatCount(*m_threadSeq[tid], m_matSampleExp[tid].GetBuf(), m_trainPi[nLen] / m_pModel->m_pi[nLen]);
+			for (int i = 0; i < aCurCount.GetSize(); i++) {
+				m_matSampleExp[tid][i] += aCurCount[i];
+				m_matSampleExp2[tid][i] += pow(aCurCount[i], 2);
+			}
 			m_matSampleLen[tid][nLen]++;
-			//			vNum[threadID]++;
 
 #pragma omp critical
 			{
@@ -356,9 +361,11 @@ namespace trf
 
 		// summarization
 		vExp.Fill(0);
+		vExp2.Fill(0);
 		vLen.Fill(0);
 		for (int t = 0; t < nThread; t++) {
 			vExp += m_matSampleExp[t];
+			vExp2 += m_matSampleExp2[t];
 			vLen += m_matSampleLen[t];
 		}
 		m_vAllSampleLenCount += vLen; /// save the length count
@@ -366,6 +373,7 @@ namespace trf
 		m_nTotalSample += m_nMiniBatchSample;
 
 		vExp /= m_nMiniBatchSample;
+		vExp2 /= m_nMiniBatchSample;
 		vLen /= m_nMiniBatchSample;
 	}
 	
@@ -393,14 +401,26 @@ namespace trf
 	{
 		int nWeightNum = m_pModel->GetParamNum();
 		m_vSampleExp.Reset(nWeightNum);
+		m_vSampleExp2.Reset(nWeightNum);
 		m_vSampleLen.Reset(m_pModel->GetMaxLen() + 1);
 
 		
 // 		/* get theoretical expectation */
- 		GetSampleExp(m_vSampleExp, m_vSampleLen);
+ 		GetSampleExp(m_vSampleExp, m_vSampleExp2, m_vSampleLen);
 
-		
 
+#if defined(_Adam)
+		for (int i = 0; i < nWeightNum; i++) {
+			pdGradient[i] = m_vEmpiricalExp[i] - m_vSampleExp[i]
+				- m_fRegL2 * m_pModel->m_value[i];// the L2 regularization
+		}
+
+#elif defined(_Hession)
+		for (int i = 0; i < nWeightNum; i++) {
+			pdGradient[i] = m_vEmpiricalExp[i] - m_vSampleExp[i]
+				- m_fRegL2 * m_pModel->m_value[i];// the L2 regularization
+		}
+#else
 		/* Calculate the gradient */
 		for (int i = 0; i < nWeightNum; i++) {
 			pdGradient[i] = (
@@ -408,24 +428,9 @@ namespace trf
 				- m_fRegL2 * m_pModel->m_value[i] // the L2 regularization
 				) / ( m_vEmpiricalVar[i] + m_fRegL2 ) /**( m_fEmpiricalVarGap + m_fRegL2 )*/; // rescaled by variance
 		}
+#endif
 
-		/* dropout operation */
-// 		lout << "dropout operation..." << endl;
-// 		double m_dDropoutRate = 0.2;
-// 		Array<int> aIndex(nWeightNum);
-// 		for (int i = 0; i < nWeightNum; i++)
-// 			aIndex[i] = i;
-// 
-// 		RandomPos(aIndex.GetBuffer(), nWeightNum, m_dDropoutRate*nWeightNum);
-// 		for (int i = 0; i < m_dDropoutRate*nWeightNum; i++) {
-// 			pdGradient[aIndex[i]] = 0;
-// 		}
-// 
-// 		int nZero = 0;
-// 		for (int i = 0; i < nWeightNum; i++) {
-// 			if (pdGradient[i] == 0) nZero++;
-// 		}
-// 		lout_variable_precent(nZero, nWeightNum);
+
 
 		/*
 			Zeta update
@@ -685,8 +690,28 @@ namespace trf
 
 		lout_assert(nWeightNum + nZetaNum == m_pfunc->GetParamNum());
 
+
+		
+#if defined(_Adam)
+		for (int i = 0; i < nWeightNum; i++) {
+			double g = pGradient[i];
+			adam_m[i] = adam_beta1 * adam_m[i] + (1 - adam_beta1) * g;
+			adam_v[i] = adam_beta2 * adam_v[i] + (1 - adam_beta2)* g*g;
+			double m_hat = adam_m[i] / (1 - pow(adam_beta1, m_nIterNum));
+			double v_hat = adam_v[i] / (1 - pow(adam_beta2, m_nIterNum));
+			pDir[i] = adam_alpha * m_hat / (sqrt(v_hat) + adam_sigma);
+		}
+#elif defined(_Hession)
+		for (int i = 0; i < nWeightNum; i++) {
+			double h = pSA->m_vSampleExp2[i] - pow(pSA->m_vSampleExp[i],2) + pSA->m_fRegL2;
+			m_avgHes[i] += m_gamma_lambda * (h - m_avgHes[i]);
+			pDir[i] = m_gamma_lambda * pGradient[i] / max(1e-4, m_avgHes[i]);
+		}
+#else
 		// update lambda
 		for (int i = 0; i < nWeightNum; i++) {
+			//m_avgGrad[i] = 0.9*m_avgGrad[i] + 0.1*pGradient[i];
+			//pDir[i] = m_gamma_lambda * m_avgGrad[i];
 			pDir[i] = m_gamma_lambda * pGradient[i];
 		}
 
@@ -704,6 +729,7 @@ namespace trf
 			}
 			lout_variable_precent(n_dgap_cutnum, nWeightNum);
 		}
+#endif
 		
 
 		// update zeta

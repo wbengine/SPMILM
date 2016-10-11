@@ -105,7 +105,7 @@ namespace hrf
 
 	void ModelExam::TestSample(int nLen /* = -1 */)
 	{
-		lout << "[ModelExam] Test Hidden Exp (nlen=" << nLen << ")" << endl;
+		lout << "[ModelExam] Test Sample (nlen=" << nLen << ")" << endl;
 
 		Vec<double> exp1(pm->GetParamNum());
 		Vec<double> exp2(pm->GetParamNum());

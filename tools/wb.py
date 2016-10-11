@@ -430,8 +430,10 @@ class FRes:
             v = value[ head.index(w) ]
             if isinstance(v, str):
                 a[i] = v
-            else:
+            elif isinstance(v, float):
                 a[i] = '{:.3f}'.format(float(v))
+            else:
+                a[i] = '{}'.format(v)
         self.new_add_name = name
         self.Write()
 

@@ -71,51 +71,71 @@ namespace hrf
 		m_m3dVH.Reset(m_pVocab->GetSize(), m_hlayer * m_hnode, 2); // 0 and 1
 		m_m3dCH.Reset(m_pVocab->GetClassNum(), m_hlayer * m_hnode, 2); // 0 and 1
 		m_m3dHH.Reset(m_hlayer * m_hnode, m_hnode, 4); // 0-0, 0-1, 1-0, 1-1
+		m_matBias.Reset(m_hlayer*m_hnode, 2); // 0 and 1
 	}
+
+
 	void Model::SetParam(PValue *pParam)
 	{
 		trf::Model::SetParam(pParam);
 		pParam += m_pFeat->GetNum();
-		memcpy(m_m3dVH.GetBuf(), pParam, sizeof(PValue)*m_m3dVH.GetSize());
-		pParam += m_m3dVH.GetSize();
-		memcpy(m_m3dCH.GetBuf(), pParam, sizeof(PValue)*m_m3dCH.GetSize());
-		pParam += m_m3dCH.GetSize();
-		memcpy(m_m3dHH.GetBuf(), pParam, sizeof(PValue)*m_m3dHH.GetSize());
+		HRF_VALUE_SET(pParam, m_m3dVH);
+		HRF_VALUE_SET(pParam, m_m3dCH);
+		HRF_VALUE_SET(pParam, m_m3dHH);
+		HRF_VALUE_SET(pParam, m_matBias);
+// 		memcpy(m_m3dVH.GetBuf(), pParam, sizeof(PValue)*m_m3dVH.GetSize());
+// 		pParam += m_m3dVH.GetSize();
+// 		memcpy(m_m3dCH.GetBuf(), pParam, sizeof(PValue)*m_m3dCH.GetSize());
+// 		pParam += m_m3dCH.GetSize();
+// 		memcpy(m_m3dHH.GetBuf(), pParam, sizeof(PValue)*m_m3dHH.GetSize());
 	}
 	void Model::GetParam(PValue *pParam)
 	{
 		trf::Model::GetParam(pParam);
 		pParam += m_pFeat->GetNum();
-		memcpy(pParam, m_m3dVH.GetBuf(), sizeof(PValue)*m_m3dVH.GetSize());
-		pParam += m_m3dVH.GetSize();
-		memcpy(pParam, m_m3dCH.GetBuf(), sizeof(PValue)*m_m3dCH.GetSize());
-		pParam += m_m3dCH.GetSize();
-		memcpy(pParam, m_m3dHH.GetBuf(), sizeof(PValue)*m_m3dHH.GetSize());
+		HRF_VALUE_GET(pParam, m_m3dVH);
+		HRF_VALUE_GET(pParam, m_m3dCH);
+		HRF_VALUE_GET(pParam, m_m3dHH);
+		HRF_VALUE_GET(pParam, m_matBias);
+
+// 		memcpy(pParam, m_m3dVH.GetBuf(), sizeof(PValue)*m_m3dVH.GetSize());
+// 		pParam += m_m3dVH.GetSize();
+// 		memcpy(pParam, m_m3dCH.GetBuf(), sizeof(PValue)*m_m3dCH.GetSize());
+// 		pParam += m_m3dCH.GetSize();
+// 		memcpy(pParam, m_m3dHH.GetBuf(), sizeof(PValue)*m_m3dHH.GetSize());
 	}
 	LogP Model::GetLogProb(Seq &seq, bool bNorm /* = true */)
 	{
 		LogP logSum = trf::Model::GetLogProb(seq.x, false);
 
+		double dfactor = 1.0 / seq.GetLen();
+
 		// Vocab * Hidden
 		for (int i = 0; i < seq.GetLen(); i++) {
-			logSum += SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i]);
+			logSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i]);
 		}
 
 		// Class * Hidden
 		if (m_m3dCH.GetSize() > 0) {
 			for (int i = 0; i < seq.GetLen(); i++) {
-				logSum += SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i]);
+				logSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i]);
 			}
 		}
 
 		// Hidden * Hidden
 		for (int i = 0; i < seq.GetLen() - 1; i++) {
-			logSum += SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
+			logSum += dfactor * SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
+		}
+
+		// Bias
+		for (int i = 0; i < seq.GetLen(); i++) {
+			logSum += dfactor * SumVHWeight(m_matBias, seq.h[i]);
 		}
 
 		// normalization
 		if (bNorm) {
-			logSum = logSum - m_logz[seq.GetLen()] + trf::Prob2LogP(m_pi[seq.GetLen()]);
+			int nLen = min(m_maxlen, seq.GetLen());
+			logSum = logSum - m_logz[nLen] + trf::Prob2LogP(m_pi[nLen]);
 		}
 		return logSum;
 	}
@@ -196,6 +216,12 @@ namespace hrf
 				m_m3dHH.Reset(nRow, nCol, 4);
 				m_m3dHH.Read(fout);
 			}
+			else if (strLabel == "m_matBias")
+			{
+				sscanf(pLine, "(num=%d)", &nRow);
+				m_matBias.Reset(nRow, 2);
+				m_matBias.Read(fout);
+			}
 		}
 	}
 	void Model::WriteT(const char *pfilename)
@@ -237,6 +263,10 @@ namespace hrf
 		// HH
 		fout.Print("m_matHH: (num=%d*%d)\n", m_m3dHH.GetXDim(), m_m3dHH.GetYDim());
 		m_m3dHH.Write(fout);
+
+		// Bias
+		fout.Print("m_matBias: (num=%d)\n", m_matBias.GetRow());
+		m_matBias.Write(fout);
 	}
 	LogP Model::GetLogProb(VecShell<VocabID> &x, bool bNorm /* = true */)
 	{
@@ -252,8 +282,11 @@ namespace hrf
 		/// Add all the ngram features
 		logProb += FeatClusterSum(trfseq, 0, x.GetSize());
 
-		if (bNorm)
-			logProb = logProb - m_logz[x.GetSize()] + trf::Prob2LogP(m_pi[x.GetSize()]);
+		if (bNorm) {
+			int nLen = min(m_maxlen, x.GetSize());
+			logProb = logProb - m_logz[nLen] + trf::Prob2LogP(m_pi[nLen]);
+		}
+			
 		return logProb;
 	}
 	LogP Model::ClusterSum(Seq &seq, int nPos, int nOrder)
@@ -268,33 +301,44 @@ namespace hrf
 	{
 		LogP LogSum = 0;
 
+		double dfactor = 1.0 / seq.GetLen();
+
 		// Word * hidden
-		LogSum += SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
+		LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
 
 		if (nPos == seq.GetLen() - nOrder) { // The last cluster
 			for (int i = nPos + 1; i < seq.GetLen(); i++) {
-				LogSum += SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i]);
+				LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i]);
 			}
 		}
 
 		// Class * hidden
 		if (m_m3dCH.GetSize() > 0) {
-			LogSum += SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos]);
+			LogSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos]);
 
 			if (nPos == seq.GetLen() - nOrder) { // The last cluster
 				for (int i = nPos + 1; i < seq.GetLen(); i++) {
-					LogSum += SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i]);
+					LogSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i]);
 				}
 			}
 		}
 
 		// Hidden * Hidden
 		if (nOrder > 1) { // if order=1, then no HH matrix
-			LogSum += SumHHWeight(m_m3dHH, seq.h[nPos], seq.h[nPos + 1]);
+			LogSum += dfactor * SumHHWeight(m_m3dHH, seq.h[nPos], seq.h[nPos + 1]);
 
 			if (nPos == seq.GetLen() - nOrder) { // The last cluster
 				for (int i = nPos + 1; i < seq.GetLen() - 1; i++)
-					LogSum += SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
+					LogSum += dfactor * SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
+			}
+		}
+
+		// bias
+		LogSum += dfactor * SumVHWeight(m_matBias, seq.h[nPos]);
+
+		if (nPos == seq.GetLen() - nOrder) { // The last cluster
+			for (int i = nPos + 1; i < seq.GetLen(); i++) {
+				LogSum += dfactor * SumVHWeight(m_matBias, seq.h[i]);
 			}
 		}
 
@@ -304,34 +348,44 @@ namespace hrf
 	LogP Model::LayerClusterSum(Seq &seq, int nlayer, int nPos, int nOrder)
 	{
 		LogP LogSum = 0;
+		double dfactor = 1.0 / seq.GetLen();
 
 		// Word * hidden
-		LogSum += SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos], nlayer);
+		LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos], nlayer);
 
 		if (nPos == seq.GetLen() - nOrder) { // The last cluster
 			for (int i = nPos + 1; i < seq.GetLen(); i++) {
-				LogSum += SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i], nlayer);
+				LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[i]], seq.h[i], nlayer);
 			}
 		}
 
 		// Class * hidden
 		if (m_m3dCH.GetSize() > 0) {
-			LogSum += SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos], nlayer);
+			LogSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos], nlayer);
 
 			if (nPos == seq.GetLen() - nOrder) { // The last cluster
 				for (int i = nPos + 1; i < seq.GetLen(); i++) {
-					LogSum += SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i], nlayer);
+					LogSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[i]], seq.h[i], nlayer);
 				}
 			}
 		}
 
 		// Hidden * Hidden
 		if (nOrder > 1) { // if order=1, then no HH matrix
-			LogSum += SumHHWeight(m_m3dHH, seq.h[nPos], seq.h[nPos + 1], nlayer);
+			LogSum += dfactor * SumHHWeight(m_m3dHH, seq.h[nPos], seq.h[nPos + 1], nlayer);
 
 			if (nPos == seq.GetLen() - nOrder) { // The last cluster
 				for (int i = nPos + 1; i < seq.GetLen() - 1; i++)
-					LogSum += SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1], nlayer);
+					LogSum += dfactor * SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1], nlayer);
+			}
+		}
+
+		// bias hidden
+		LogSum += dfactor * SumVHWeight(m_matBias, seq.h[nPos], nlayer);
+
+		if (nPos == seq.GetLen() - nOrder) { // The last cluster
+			for (int i = nPos + 1; i < seq.GetLen(); i++) {
+				LogSum += dfactor * SumVHWeight(m_matBias, seq.h[i], nlayer);
 			}
 		}
 
@@ -358,10 +412,11 @@ namespace hrf
 				for (int k = 0; k < m_hlayer * m_hnode; k++) {
 					/* After introducing CHmat, revise the equation !!! */
 					if (cid != trf::VocabID_none && m_m3dCH.GetSize() > 0) {
-						d2 += trf::Log_Sum(m_m3dVH[x][k][0] + m_m3dCH[cid][k][0], m_m3dVH[x][k][1] + m_m3dCH[cid][k][1]);
+						d2 += trf::Log_Sum(m_matBias[k][0] + m_m3dVH[x][k][0] + m_m3dCH[cid][k][0],
+							m_matBias[k][1] + m_m3dVH[x][k][1] + m_m3dCH[cid][k][1]);
 					}
 					else { // if cid == VocabID_none, it means on class infromation
-						d2 += trf::Log_Sum(m_m3dVH[x][k][0], m_m3dVH[x][k][1]);
+						d2 += trf::Log_Sum(m_matBias[k][0] + m_m3dVH[x][k][0], m_matBias[k][1] + m_m3dVH[x][k][1]);
 					}
 				}
 				dLogSum = trf::Log_Sum(dLogSum, d1 + d2);
@@ -414,7 +469,8 @@ namespace hrf
 		double *p = expTemp.GetBuf();
 		VecShell<double> featexp;
 		Mat3dShell<double> VHexp, CHexp, HHexp;
-		BufMap(p, featexp, VHexp, CHexp, HHexp);
+		MatShell<double> Bexp;
+		BufMap(p, featexp, VHexp, CHexp, HHexp, Bexp);
 
 		exp.Fill(0);
 		for (int len = 1; len <= m_maxlen; len++) {
@@ -422,7 +478,7 @@ namespace hrf
 			int nMaxOrder = max(GetMaxOrder(), GetHiddenOrder()); ///< max-order
 			m_nodeCal.ForwardBackward(len, nMaxOrder, GetEncodeNodeLimit());
 
-			GetNodeExp(len, featexp, VHexp, CHexp, HHexp);
+			GetNodeExp(len, featexp, VHexp, CHexp, HHexp, Bexp);
 			// 			GetNodeExp_feat(len, featexp);
 			// 			GetNodeExp_VH(len, VHexp);
 			// 			GetNodeExp_HH(len, HHexp);
@@ -436,17 +492,22 @@ namespace hrf
 	{
 		VecShell<double> featexp;
 		Mat3dShell<double> VHexp, CHexp, HHexp;
-		BufMap(pExp, featexp, VHexp, CHexp, HHexp);
-		GetNodeExp(nLen, featexp, VHexp, CHexp, HHexp);
+		MatShell<double> Bexp;
+		BufMap(pExp, featexp, VHexp, CHexp, HHexp, Bexp);
+		GetNodeExp(nLen, featexp, VHexp, CHexp, HHexp, Bexp);
 	}
 	void Model::GetNodeExp(int nLen, VecShell<double> featexp,
-		Mat3dShell<double> VHexp, Mat3dShell<double> CHexp, Mat3dShell<double> HHexp)
+		Mat3dShell<double> VHexp, Mat3dShell<double> CHexp, Mat3dShell<double> HHexp, 
+		MatShell<double> Bexp)
 	{
 		// make sure the forward-backward is performed.
 		featexp.Fill(0);
 		VHexp.Fill(0);
 		CHexp.Fill(0);
 		HHexp.Fill(0);
+		Bexp.Fill(0);
+
+		double dfactor = 1.0 / nLen;
 
 		//int nMaxOrder = m_nodeCal.m_nOrder;
 		int nClusterNum = nLen - m_nodeCal.m_nOrder + 1;
@@ -480,23 +541,25 @@ namespace hrf
 
 				VocabID x = seq.wseq()[pos];
 				for (int k = 0; k < m_hlayer*m_hnode; k++) {
-					VHexp[x][k][(int)(seq.h[pos][k])] += prob;
+					VHexp[x][k][(int)(seq.h[pos][k])] += dfactor * prob;
 				}
 				if (m_pVocab->GetClassNum() > 0) {
 					VocabID c = seq.cseq()[pos];
 					for (int k = 0; k < m_hlayer*m_hnode; k++) {
-						CHexp[c][k][(int)(seq.h[pos][k])] += prob;
+						CHexp[c][k][(int)(seq.h[pos][k])] += dfactor * prob;
 					}
 				}
 				if (nClusterDim > 1) {
 					for (int l = 0; l < m_hlayer; l++) {
 						for (int a = 0; a < m_hnode; a++) {
 							for (int b = 0; b < m_hnode; b++) {
-								HHexp[l*m_hnode + a][b][HHMap(seq.h[pos][l*m_hnode + a], seq.h[pos + 1][l*m_hnode + b])] += prob;
+								HHexp[l*m_hnode + a][b][HHMap(seq.h[pos][l*m_hnode + a], seq.h[pos + 1][l*m_hnode + b])] += dfactor * prob;
 							}
 						}
 					}
-					
+				}
+				for (int k = 0; k < m_hlayer*m_hnode; k++) {
+					Bexp[k][(int)(seq.h[pos][k])] += dfactor * prob;
 				}
 
 
@@ -517,14 +580,14 @@ namespace hrf
 					for (int ii = 1; ii < nClusterDim; ii++) {
 						VocabID x = seq.wseq()[pos+ii];
 						for (int k = 0; k < m_hlayer*m_hnode; k++) {
-							VHexp[x][k][seq.h[pos+ii][k]] += prob;
+							VHexp[x][k][seq.h[pos + ii][k]] += dfactor * prob;
 						}
 					}
 					if (m_pVocab->GetClassNum() > 0) {
 						for (int ii = 1; ii < nClusterDim; ii++) {
 							VocabID c = seq.cseq()[pos+ii];
 							for (int k = 0; k < m_hlayer*m_hnode; k++) {
-								CHexp[c][k][seq.h[pos+ii][k]] += prob;
+								CHexp[c][k][seq.h[pos + ii][k]] += dfactor * prob;
 							}
 						}
 					}
@@ -532,9 +595,14 @@ namespace hrf
 						for (int l = 0; l < m_hlayer; l++) {
 							for (int a = 0; a < m_hnode; a++) {
 								for (int b = 0; b < m_hnode; b++) {
-									HHexp[l*m_hnode + a][b][HHMap(seq.h[pos + ii][l*m_hnode + a], seq.h[pos + ii + 1][l*m_hnode + b])] += prob;
+									HHexp[l*m_hnode + a][b][HHMap(seq.h[pos + ii][l*m_hnode + a], seq.h[pos + ii + 1][l*m_hnode + b])] += dfactor * prob;
 								}
 							}
+						}
+					}
+					for (int ii = 1; ii < nClusterDim; ii++) {
+						for (int k = 0; k < m_hlayer*m_hnode; k++) {
+							Bexp[k][seq.h[pos + ii][k]] += dfactor * prob;
 						}
 					}
 				}
@@ -547,7 +615,8 @@ namespace hrf
 
 		VecShell<double> featexp;
 		Mat3dShell<double> VHexp, CHexp, HHexp;
-		BufMap(pExp, featexp, VHexp, CHexp, HHexp);
+		MatShell<double> Bexp;
+		BufMap(pExp, featexp, VHexp, CHexp, HHexp, Bexp);
 
 
 		int nLen = x.GetSize(); ///< length
@@ -560,7 +629,7 @@ namespace hrf
 			// get the normalization constant
 			LogP logz = fb.GetLogSummation();
 			// get the exp
-			GetLayerExp(fb, layer, VHexp, CHexp, HHexp, logz);
+			GetLayerExp(fb, layer, VHexp, CHexp, HHexp, Bexp, logz);
 		}
 
 		//get the feature expectation
@@ -570,7 +639,8 @@ namespace hrf
 	}
 
 	void Model::GetLayerExp(AlgLayer &fb, int nLayer,
-		Mat3dShell<double> &VHexp, Mat3dShell<double> &CHexp, Mat3dShell<double> &HHexp, LogP logz /* = 0 */)
+		Mat3dShell<double> &VHexp, Mat3dShell<double> &CHexp, Mat3dShell<double> &HHexp, MatShell<double> &Bexp,
+		LogP logz /* = 0 */)
 	{
 		/* Don't clean the buffer!!!! */
 		//int nMaxOrder = GetHiddenOrder();
@@ -581,7 +651,7 @@ namespace hrf
 			nClusterNum = 1;
 			nClusterDim = nLen;
 		}
-
+		double dfactor = 1.0 / nLen;
 		Vec<int> hseq(nLen);
 		Mat<HValue> h(nLen, m_hlayer * m_hnode);
 		for (int pos = 0; pos < nClusterNum; pos++) {
@@ -594,20 +664,23 @@ namespace hrf
 				// the cluster before the last one
 				VocabID x = fb.m_seq.wseq()[pos];
 				for (int k = nLayer*m_hnode; k < nLayer*m_hnode+m_hnode; k++) {
-					VHexp[x][k][h[pos][k]] += prob;
+					VHexp[x][k][h[pos][k]] += dfactor * prob;
 				}
 				if (m_pVocab->GetClassNum() > 0) {
 					VocabID c = fb.m_seq.cseq()[pos];
 					for (int k = nLayer*m_hnode; k < nLayer*m_hnode + m_hnode; k++) {
-						CHexp[c][k][h[pos][k]] += prob;
+						CHexp[c][k][h[pos][k]] += dfactor * prob;
 					}
 				}
 				if (nClusterDim > 1) {
 					for (int a = 0; a < m_hnode; a++) {
 						for (int b = 0; b < m_hnode; b++) {
-							HHexp[nLayer*m_hnode + a][b][HHMap(h[pos][nLayer*m_hnode + a], h[pos + 1][nLayer*m_hnode + b])] += prob;
+							HHexp[nLayer*m_hnode + a][b][HHMap(h[pos][nLayer*m_hnode + a], h[pos + 1][nLayer*m_hnode + b])] += dfactor * prob;
 						}
 					}
+				}
+				for (int k = nLayer*m_hnode; k < nLayer*m_hnode + m_hnode; k++) {
+					Bexp[k][h[pos][k]] += dfactor * prob;
 				}
 
 				// the last cluster
@@ -615,19 +688,22 @@ namespace hrf
 					for (int ii = 1; ii < nClusterDim; ii++) {
 						VocabID x = fb.m_seq.wseq()[pos + ii];
 						for (int k = nLayer*m_hnode; k < nLayer*m_hnode + m_hnode; k++) {
-							VHexp[x][k][h[pos + ii][k]] += prob;
+							VHexp[x][k][h[pos + ii][k]] += dfactor * prob;
 						}
 						if (m_pVocab->GetClassNum() > 0) {
 							VocabID c = fb.m_seq.cseq()[pos + ii];
 							for (int k = nLayer*m_hnode; k < nLayer*m_hnode + m_hnode; k++) {
-								CHexp[c][k][h[pos + ii][k]] += prob;
+								CHexp[c][k][h[pos + ii][k]] += dfactor * prob;
 							}
+						}
+						for (int k = nLayer*m_hnode; k < nLayer*m_hnode + m_hnode; k++) {
+							Bexp[k][h[pos + ii][k]] += dfactor * prob;
 						}
 					}
 					for (int ii = 1; ii < nClusterDim - 1; ii++) {
 						for (int a = 0; a < m_hnode; a++) {
 							for (int b = 0; b < m_hnode; b++) {
-								HHexp[nLayer*m_hnode + a][b][HHMap(h[pos+ii][nLayer*m_hnode + a], h[pos + ii + 1][nLayer*m_hnode + b])] += prob;
+								HHexp[nLayer*m_hnode + a][b][HHMap(h[pos + ii][nLayer*m_hnode + a], h[pos + ii + 1][nLayer*m_hnode + b])] += dfactor * prob;
 							}
 						}
 					}
@@ -758,14 +834,16 @@ namespace hrf
 		Mat<LogP> matLogp(m_hlayer*m_hnode, 2); /// save the logp of 0 or 1 for each hidden vairables
 		matLogp.Fill(0);
 
+		double dfactor = 1.0 / seq.GetLen();
+
 		// HH connection
 		if (nPos - 1 >= 0 && nPos - 1 <= seq.GetLen() - 1) {
 			for (int l = 0; l < m_hlayer; l++) {
 				for (int i = 0; i < m_hnode; i++) {
 					HValue curh = seq.h[nPos - 1][l*m_hnode + i];
 					for (int j = 0; j < m_hnode; j++) {
-						matLogp.Get(l*m_hnode + j, 0) += m_m3dHH.Get(l*m_hnode + i, j, HHMap(curh, 0));
-						matLogp.Get(l*m_hnode + j, 1) += m_m3dHH.Get(l*m_hnode + i, j, HHMap(curh, 1));
+						matLogp.Get(l*m_hnode + j, 0) += dfactor * m_m3dHH.Get(l*m_hnode + i, j, HHMap(curh, 0));
+						matLogp.Get(l*m_hnode + j, 1) += dfactor * m_m3dHH.Get(l*m_hnode + i, j, HHMap(curh, 1));
 					}
 				}
 			}
@@ -775,24 +853,30 @@ namespace hrf
 				for (int i = 0; i < m_hnode; i++) {
 					HValue curh = seq.h[nPos + 1][l*m_hnode + i];
 					for (int j = 0; j < m_hnode; j++) {
-						matLogp.Get(l*m_hnode + j, 0) += m_m3dHH.Get(l*m_hnode + j, i, HHMap(0, curh));
-						matLogp.Get(l*m_hnode + j, 1) += m_m3dHH.Get(l*m_hnode + j, i, HHMap(1, curh));
+						matLogp.Get(l*m_hnode + j, 0) += dfactor * m_m3dHH.Get(l*m_hnode + j, i, HHMap(0, curh));
+						matLogp.Get(l*m_hnode + j, 1) += dfactor * m_m3dHH.Get(l*m_hnode + j, i, HHMap(1, curh));
 					}
 				}
 			}
 		}
 
+		/* bias for H */
+		for (int i = 0; i < m_hlayer*m_hnode; i++) {
+			matLogp[i][0] += dfactor * m_matBias[i][0];
+			matLogp[i][1] += dfactor * m_matBias[i][1];
+		}
+
 		if (bConsiderXandC) {
 			/* Consider the VH matrix */
 			for (int i = 0; i < m_hlayer*m_hnode; i++) {
-				matLogp[i][0] += m_m3dVH[seq.wseq()[nPos]][i][0];
-				matLogp[i][1] += m_m3dVH[seq.wseq()[nPos]][i][1];
+				matLogp[i][0] += dfactor * m_m3dVH[seq.wseq()[nPos]][i][0];
+				matLogp[i][1] += dfactor * m_m3dVH[seq.wseq()[nPos]][i][1];
 			}
 			if (m_m3dCH.GetSize() > 0) {
 				/* Consider the CH matrix */
 				for (int i = 0; i < m_hlayer*m_hnode; i++) {
-					matLogp[i][0] += m_m3dCH[seq.cseq()[nPos]][i][0];
-					matLogp[i][1] += m_m3dCH[seq.cseq()[nPos]][i][1];
+					matLogp[i][0] += dfactor * m_m3dCH[seq.cseq()[nPos]][i][0];
+					matLogp[i][1] += dfactor * m_m3dCH[seq.cseq()[nPos]][i][1];
 				}
 			}
 		}
@@ -819,20 +903,24 @@ namespace hrf
 	{
 		// Only consider the HH-matrix, as VH matrix has been considered in GetLogWeightSumForW
 		LogP logSum = 0;
+		double dfactor = 1.0 / seq.GetLen();
 		// Hidden * Hidden
 		for (int i = max(0, nPos - 1); i <= min(seq.GetLen() - 2, nPos); i++) {
-			logSum += SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
+			logSum += dfactor * SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
 		}
+		// consider the bias for H
+		logSum += dfactor * SumVHWeight(m_matBias, seq.h[nPos]);
 		return logSum;
 	}
 	LogP Model::GetReducedModelForC(Seq &seq, int nPos)
 	{
 		// class features
 		LogP logSum = trf::Model::GetReducedModelForC(seq.x, nPos);
-
+		
 		// CH
+		double dfactor = 1.0 / seq.GetLen();
 		if (m_m3dCH.GetSize() > 0) {
-			logSum += SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos]);
+			logSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos]);
 		}
 
 		return logSum;
@@ -842,7 +930,8 @@ namespace hrf
 		// word features
 		LogP logSum = trf::Model::GetReducedModelForW(seq.x, nPos);
 		// VH
-		logSum += SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
+		double dfactor = 1.0 / seq.GetLen();
+		logSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
 		return logSum;
 	}
 	LogP Model::GetConditionalProbForH(VecShell<HValue> &hi, VecShell<LogP> &logps)
@@ -1080,18 +1169,23 @@ namespace hrf
 		return 1 << m_hnode;
 	}
 
-	void Model::FeatCount(Seq &seq, VecShell<double> featcount, Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, double dadd /* = 1 */)
+	void Model::FeatCount(Seq &seq, VecShell<double> featcount, 
+		Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, 
+		MatShell<double> Bcount, double dadd /* = 1 */)
 	{
 		trf::Model::FeatCount(seq.x, featcount.GetBuf(), dadd);
 
-		HiddenFeatCount(seq, VHcount, CHcount, HHcount, dadd);
+		HiddenFeatCount(seq, VHcount, CHcount, HHcount, Bcount, dadd);
 	}
-	void Model::HiddenFeatCount(Seq &seq, Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, double dadd /* = 1 */)
+	void Model::HiddenFeatCount(Seq &seq, 
+		Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, 
+		MatShell<double> Bcount, double dadd /* = 1 */)
 	{
+		double dfactor = 1.0 / seq.GetLen();
 		/* VH count */
 		for (int i = 0; i < seq.GetLen(); i++) {
 			for (int k = 0; k < m_hlayer*m_hnode; k++) {
-				VHcount[seq.wseq()[i]][k][seq.h[i][k]] += dadd;
+				VHcount[seq.wseq()[i]][k][seq.h[i][k]] += dfactor * dadd;
 			}
 		}
 
@@ -1099,7 +1193,7 @@ namespace hrf
 		if (m_pVocab->GetClassNum() > 0) {
 			for (int i = 0; i < seq.GetLen(); i++) {
 				for (int k = 0; k < m_hlayer*m_hnode; k++) {
-					CHcount[seq.cseq()[i]][k][seq.h[i][k]] += dadd;
+					CHcount[seq.cseq()[i]][k][seq.h[i][k]] += dfactor * dadd;
 				}
 			}
 		}
@@ -1109,19 +1203,26 @@ namespace hrf
 			for (int l = 0; l < m_hlayer; l++) {
 				for (int a = 0; a < m_hnode; a++) {
 					for (int b = 0; b < m_hnode; b++) {
-						HHcount.Get(l * m_hnode + a, b, HHMap(seq.h.Get(i, l*m_hnode + a), seq.h.Get(i + 1, l*m_hnode + b))) += dadd;
+						HHcount.Get(l * m_hnode + a, b, HHMap(seq.h.Get(i, l*m_hnode + a), seq.h.Get(i + 1, l*m_hnode + b))) += dfactor * dadd;
 					}
 				}
+			}	
+		}
+
+		/* Bias count */
+		for (int i = 0; i < seq.GetLen(); i++) {
+			for (int k = 0; k < m_hlayer*m_hnode; k++) {
+				Bcount[k][seq.h[i][k]] += dfactor * dadd;
 			}
-			
 		}
 	}
 	void Model::FeatCount(Seq &seq, VecShell<double> count, double dadd /* = 1 */)
 	{
 		VecShell<double> featcount;
 		Mat3dShell<double> VHcount, CHcount, HHcount;
-		BufMap(count.GetBuf(), featcount, VHcount, CHcount, HHcount);
-		FeatCount(seq, featcount, VHcount, CHcount, HHcount, dadd);
+		MatShell<double> Bcount;
+		BufMap(count.GetBuf(), featcount, VHcount, CHcount, HHcount, Bcount);
+		FeatCount(seq, featcount, VHcount, CHcount, HHcount, Bcount, dadd);
 	}
 
 	PValue Model::SumVHWeight(MatShell<PValue> m, VecShell<HValue> h)

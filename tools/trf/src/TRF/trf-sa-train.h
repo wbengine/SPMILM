@@ -71,6 +71,7 @@ namespace trf
 //		Vec<double> m_vEmpiricalExp; ///< the empirical expectation
 //		Vec<double> m_vEmpiricalExp2; ///< the empirical expectation E[f^2]
 		Vec<double> m_vSampleExp; ///< the sample expectation
+		Vec<double> m_vSampleExp2; ///< the sample expectation^2
 		Vec<double> m_vSampleLen; ///< the sample length expectation
 
 
@@ -80,6 +81,7 @@ namespace trf
 // 		Mat<double> m_matEmpiricalExp; ///< the empirical expectation of each thread
 // 		Mat<double> m_matEmpiricalExp2; ///< empirical E[f^2] of each thread
 		Mat<double> m_matSampleExp; ///< the sample expectation of each thread
+		Mat<double> m_matSampleExp2; ///< the sample expectation^2 of each thread
 		Mat<double> m_matSampleLen; ///< the length count of sample of each thread
 
 		Vec<double> m_vEmpiricalVar; ///< empirical variance 
@@ -139,7 +141,7 @@ namespace trf
 		void GetEmpVar(CorpusBase *pCorpus, Vec<double> &vVar);
 
 		/// calcualte the expectation of SA samples
-		virtual void GetSampleExp(VecShell<double> &vExp, VecShell<double> &vLen);
+		virtual void GetSampleExp(VecShell<double> &vExp, VecShell<double> &vExp2, VecShell<double> &vLen);
 
 		/// do something at the end of the SA iteration
 		void IterEnd(double *pFinalParams);
@@ -193,6 +195,19 @@ namespace trf
 		int m_nPrintPerIter;  ///< output the LL per iteration, if ==-1, the disable
 		wb::Array<int> m_aWriteAtIter; ///< output temp model at some iteration
 
+#ifdef _Adam
+		double adam_beta1;
+		double adam_beta2;
+		double adam_sigma;
+		double adam_alpha;
+		Vec<double> adam_m; ///< moving averaged gradient
+		Vec<double> adam_v; ///< moving averaged gradient^2
+#endif
+
+#ifdef _Hession
+		Vec<double> m_avgHes; ///< the moveing averaged hession
+#endif
+
 	public:
 		SAtrain(SAfunc *pfunc = NULL) : Solve(pfunc)
 		{
@@ -211,6 +226,20 @@ namespace trf
 
 			m_fEpochNun = 0;
 			m_nPrintPerIter = 1;
+#ifdef _Hession
+			m_avgHes.Reset(pfunc->GetFeatNum());
+			m_avgHes.Fill(0);
+#endif
+#ifdef _Adam
+			adam_beta1 = 0.9;
+			adam_beta2 = 0.999;
+			adam_alpha = 1e-3;
+			adam_sigma = 1e-8;
+			adam_m.Reset(pfunc->GetFeatNum());
+			adam_v.Reset(pfunc->GetFeatNum());
+			adam_m.Fill(0);
+			adam_v.Fill(0);
+#endif
 		}
 		/// Run iteration. input the init-parameters.
 		virtual bool Run(const double *pInitParams = NULL);

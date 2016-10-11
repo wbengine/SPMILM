@@ -1,5 +1,6 @@
 #pragma once
 #include "hrf-ml-train.h"
+#include "hrf-corpus.h"
 #include <omp.h>
 
 
@@ -46,7 +47,8 @@ namespace hrf
 		int m_nMiniBatchSample;  ///< mini-batch for samples
 		int m_nMiniBatchTraining; ///< mini-batch for training set
 		trf::CorpusRandSelect m_TrainSelect; ///< random select the sequence from corpus
-		
+		CorpusCache m_TrainCache; ///< cache all the h of training sequences.
+
 		Vec<Prob> m_samplePi; ///< the length distribution used for sample
 
 	private:
@@ -102,11 +104,18 @@ namespace hrf
 		File m_feat_mean; ///< output the empirical mean 
 		File m_feat_var;  ///< output the empirical variance 
 
+		bool m_bPrintTrain; ///< output the LL on training set
+		bool m_bPrintValie; ///< output the LL on valid set
+		bool m_bPrintTest;  ///< output the LL on test set
+
 	public:
 		SAfunc() :m_nMiniBatchSample(100), m_nMiniBatchTraining(100) {
 #ifdef _Var
 			m_var_gap = 1e-5;
 #endif
+			m_bPrintTrain = true;
+			m_bPrintValie = true;
+			m_bPrintTest = true;
 		};
 		SAfunc(Model *pModel, CorpusBase *pTrain, CorpusBase *pValid = NULL, CorpusBase *pTest = NULL, int nMinibatch = 100 )
 		{
@@ -114,6 +123,9 @@ namespace hrf
 #ifdef _Var
 			m_var_gap = 1e-5;
 #endif
+			m_bPrintTrain = true;
+			m_bPrintValie = true;
+			m_bPrintTest = true;
 		}
 		~SAfunc()
 		{
@@ -141,6 +153,8 @@ namespace hrf
 		int GetCHmatSize() const { return m_pModel->m_m3dCH.GetSize(); }
 		/// get the HH mat number
 		int GetHHmatSize() const { return m_pModel->m_m3dHH.GetSize(); }
+		/// get the bias mat number
+		int GetBiasSize() const { return m_pModel->m_matBias.GetSize(); }
 		/// get the nunber of all the weight up the exp
 		int GetWeightNum() const { return m_pModel->GetParamNum(); }
 		/// get the zeta parameter number
@@ -161,10 +175,8 @@ namespace hrf
 		int GetEmpiricalExp(VecShell<double> &vExp, VecShell<double> &vExp2, Array<int> &aRandIdx);
 		/// calculate the empirical expectation
 		int GetEmpiricalExp(VecShell<double> &vExp, VecShell<double> &vExp2);
-#ifndef _CD
 		/// calcualte the expectation of SA samples
 		int GetSampleExp(VecShell<double> &vExp, VecShell<double> &vLen);
-#endif
 		/// perform CD process and get the expectation
 		void PerfromCD(VecShell<double> &vEmpExp, VecShell<double> &vSamExp, VecShell<double> &vEmpExp2, VecShell<double> &vLen);
 		/// perform SA process and get the expectation
@@ -210,21 +222,20 @@ namespace hrf
 	{
 	protected:
 		double m_gamma_lambda;
-		double m_gamma_VH;
-		double m_gamma_CH;
-		double m_gamma_HH;
+		double m_gamma_hidden;
 		double m_gamma_zeta;
 
 	public:
 
 		LearningRate m_gain_lambda;
-		LearningRate m_gain_VHmat;
-		LearningRate m_gain_CHmat;
-		LearningRate m_gain_HHmat;
+		LearningRate m_gain_hidden;
 		LearningRate m_gain_zeta;
 
 		bool m_bUpdate_lambda;
 		bool m_bUpdate_zeta;
+
+		double m_dir_gap;
+		double m_zeta_gap;
 
 		float m_fMomentum; ///< the momentum 
 		int m_nAvgBeg; ///< if >0, then calculate the average
@@ -249,11 +260,15 @@ namespace hrf
 #endif
 
 			m_gamma_lambda = 1;
+			m_gamma_hidden = 1;
 			m_gamma_zeta = 1;
 
 
 			m_bUpdate_lambda = true;
 			m_bUpdate_zeta = true;
+			
+			m_dir_gap = 0;
+			m_zeta_gap = 0;
 
 			m_fMomentum = 0;
 			m_nAvgBeg = 0;
@@ -274,6 +289,8 @@ namespace hrf
 		virtual void Update(double *pdParam, const double *pdDir, double dStep);
 		/// Print Information
 		void PrintInfo();
+		/// cut array
+		int CutValue(double *p, int num, double gap);
 	};
 
 	

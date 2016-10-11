@@ -69,6 +69,13 @@ namespace wb
 		void operator /= (T n);
 		bool operator == (VecShell v);
 		//operator T*() const { return m_pBuf; }
+		T Sum() {
+			T sum = 0;
+			for (int i = 0; i < m_nSize; i++)
+				sum += m_pBuf[i];
+			return sum;
+		}
+		
 	};
 
 	template <class T>
@@ -112,6 +119,8 @@ namespace wb
 		int GetRow() const { return m_nRow; }
 		int GetCol() const { return m_nCol; }
 		void Reset(T *pbuf, int row, int col) { m_pBuf = pbuf; m_nRow = row; m_nCol = col; }
+		void Read(File &file);
+		void Write(File &file);
 		VecShell<T> operator [] (int i) { return VecShell<T>(m_pBuf + i*m_nCol, m_nCol);}
 		operator T* () { return m_pBuf; }
 		bool operator== (MatShell &m);
@@ -395,6 +404,28 @@ namespace wb
 				return false;
 		}
 		return true;
+	}
+	template <class T>
+	void MatShell<T>::Write(File &file)
+	{
+		ofstream os(file.fp);
+		for (int i = 0; i < m_nRow; i++) {
+			for (int j = 0; j < m_nCol; j++) {
+				os << Get(i, j) << " ";
+			}
+			os << endl;
+		}
+	}
+	template <class T>
+	void MatShell<T>::Read(File &file)
+	{
+		ifstream is(file.fp);
+		for (int i = 0; i < m_nRow; i++) {
+			for (int j = 0; j < m_nCol; j++) {
+				is >> Get(i, j);
+			}
+			file.Scanf("\n");
+		}
 	}
 
 	/************************************************************************/

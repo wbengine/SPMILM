@@ -85,21 +85,35 @@ namespace hrf
 		vSum.Fill(0);
 		vNum.Fill(0);
 
+		Vec<double> vWeight(nThread);
+		Vec<double> vLogz(nThread);
+		Vec<double> vZeta(nThread);
+		Vec<double> vPi(nThread);
+		vWeight.Fill(0);
+		vLogz.Fill(0);
+		vZeta.Fill(0);
+		vPi.Fill(0);
+	
+
 		int nCorpusNum = (nCalNum == -1) ? pCorpus->GetNum() : min(nCalNum, pCorpus->GetNum());
 		Title::Precent(0, true, nCorpusNum-1, "omp GetLL");
 #pragma omp parallel for firstprivate(aSeq)
 		for (int i = 0; i < nCorpusNum; i++) {
 			pCorpus->GetSeq(i, aSeq);
 
-			if (aSeq.GetNum() > m_pModel->GetMaxLen()) {
-				continue;
-			}
-
 			VecShell<VocabID> x(aSeq.GetBuffer(), aSeq.GetNum());
 			LogP logprob = m_pModel->GetLogProb(x);
 
 			vSum[omp_get_thread_num()] += logprob;
 			vNum[omp_get_thread_num()]++;
+			
+			int nLen = min(aSeq.GetNum(), m_pModel->GetMaxLen());
+			vWeight[omp_get_thread_num()] += m_pModel->GetLogProb(x, false);
+			vLogz[omp_get_thread_num()] += m_pModel->m_logz[nLen];
+			vZeta[omp_get_thread_num()] += m_pModel->m_zeta[nLen];
+			vPi[omp_get_thread_num()] += trf::Prob2LogP(m_pModel->m_pi[nLen]);
+
+
 			Title::Precent();
 		}
 
@@ -108,7 +122,20 @@ namespace hrf
 		for (int t = 0; t < nThread; t++) {
 			dsum += vSum[t];
 			nNum += vNum[t];
+
 		}
+
+		lout_variable(vSum.Sum() / nNum);
+		lout_variable(vNum.Sum() / nNum);
+		lout_variable(vLogz.Sum() / nNum);
+		lout_variable(vZeta.Sum()/nNum);
+		lout_variable(vPi.Sum()/nNum);
+
+		lout_variable(m_pModel->m_logz[1]);
+		lout_variable(vSum.Sum() / nNum);
+		lout_variable((vWeight.Sum() - vZeta.Sum() + vPi.Sum()) / nNum);
+		lout_variable((vWeight.Sum() - vLogz.Sum() + vPi.Sum()) / nNum);
+
 		return dsum / nNum;
 	}
 	double MLfunc::GetValue()
@@ -151,7 +178,8 @@ namespace hrf
 		static File fileDbg("GradientML.dbg", "wt");
 		VecShell<double> featexp;
 		Mat3dShell<double> VHexp, CHexp, HHexp;
-		m_pModel->BufMap(pdGradient, featexp, VHexp, CHexp, HHexp);
+		MatShell<double> Bexp;
+		m_pModel->BufMap(pdGradient, featexp, VHexp, CHexp, HHexp, Bexp);
 		fileDbg.PrintArray("%f ", featexp.GetBuf(), featexp.GetSize());
 		fileDbg.PrintArray("%f ", VHexp.GetBuf(), VHexp.GetSize());
 		fileDbg.PrintArray("%f ", HHexp.GetBuf(), HHexp.GetSize());

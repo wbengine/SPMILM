@@ -83,6 +83,14 @@ namespace hrf
 
 #define HHMap(h1, h2) (int)((h1) * 2 + (h2))
 
+#define HRF_VALUE_SET(p, m) \
+	memcpy(m.GetBuf(), p, sizeof(PValue)*m.GetSize()); \
+	p += m.GetSize();
+#define HRF_VALUE_GET(p, m) \
+	memcpy(p, m.GetBuf(), sizeof(PValue)*m.GetSize()); \
+	p += m.GetSize();
+
+
 	/**
 	 * \class Model
 	 * \brief hidden-random-field model
@@ -95,6 +103,7 @@ namespace hrf
 		Mat3d<PValue> m_m3dVH; ///< the weight between Word(V) and Hidden(H)
 		Mat3d<PValue> m_m3dCH; ///< the weight between Class(C) and Hidden(H)
 		Mat3d<PValue> m_m3dHH; ///< the weight between adjacent Hidden(H)
+		Mat<PValue>   m_matBias; ///< the bias for each value of Hidden(H)
 
 	protected:
 		AlgNode m_nodeCal; ///< the forward-backward calculation for node (x and h)
@@ -118,7 +127,7 @@ namespace hrf
 		/// Get HH mat order
 		int GetHiddenOrder() const { return 2; }
 		/// Get the total parameter number
-		int GetParamNum() const { return trf::Model::GetParamNum() + m_m3dVH.GetSize() + m_m3dCH.GetSize() + m_m3dHH.GetSize(); }
+		int GetParamNum() const { return trf::Model::GetParamNum() + m_m3dVH.GetSize() + m_m3dCH.GetSize() + m_m3dHH.GetSize() + m_matBias.GetSize(); }
 		/// Set the parameters
 		virtual void SetParam(PValue *pParam);
 		/// Get the paremetre vector
@@ -155,12 +164,14 @@ namespace hrf
 		void GetNodeExp(int nLen, double *pExp);
 		/// [exact] E_{p_l}[f]: Exactly calculate the expectation over x and h for length nLen
 		void GetNodeExp(int nLen, VecShell<double> featexp,
-			Mat3dShell<double> VHexp, Mat3dShell<double> CHexp, Mat3dShell<double> HHexp);
+			Mat3dShell<double> VHexp, Mat3dShell<double> CHexp, Mat3dShell<double> HHexp,
+			MatShell<double> Bexp);
 		/// [exact] E_{p_l(h|x)}[f]: don't clean the pExp and directly add the new exp to pExp.
 		void GetHiddenExp(VecShell<int> x, double *pExp);
 		/// [exact] called in GetHiddenExp.
 		void GetLayerExp(AlgLayer &fb, int nLayer,
-			Mat3dShell<double> &VHexp, Mat3dShell<double> &CHexp, Mat3dShell<double> &HHexp, LogP logz = 0);
+			Mat3dShell<double> &VHexp, Mat3dShell<double> &CHexp, Mat3dShell<double> &HHexp, MatShell<double> &Bexp,
+			LogP logz = 0);
 
 	public:
 		int m_nSampleHAccTimes; ///< sample H the acceptance times
@@ -242,7 +253,7 @@ namespace hrf
 	public:
 		/// Map a paremeter vector to each kinds of parameters
 		template <typename T>
-		void BufMap(T *p, VecShell<T> &feat, Mat3dShell<T> &VH, Mat3dShell<T> &CH, Mat3dShell<T> &HH)
+		void BufMap(T *p, VecShell<T> &feat, Mat3dShell<T> &VH, Mat3dShell<T> &CH, Mat3dShell<T> &HH, MatShell<T> &Bias)
 		{
 			feat.Reset(p, trf::Model::GetParamNum());
 			p += feat.GetSize();
@@ -252,13 +263,19 @@ namespace hrf
 			CH.Reset(p, m_m3dCH.GetXDim(), m_m3dCH.GetYDim(), m_m3dCH.GetZDim());
 			p += CH.GetSize();
 			HH.Reset(p, m_m3dHH.GetXDim(), m_m3dHH.GetYDim(), m_m3dHH.GetZDim());
+			p += HH.GetSize();
+			Bias.Reset(p, m_matBias.GetRow(), m_matBias.GetCol());
 		}
 		/// Count the feature number in current sequence, and add to the result
 		void FeatCount(Seq &seq, VecShell<double> featcount,
-			Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, double dadd = 1);
+			Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, 
+			MatShell<double> Bcount,
+			double dadd = 1);
 		/// Count the hidden features
 		void HiddenFeatCount(Seq &seq,
-			Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, double dadd = 1);
+			Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount,
+			MatShell<double> Bcount,
+			double dadd = 1);
 		/// Count the feature number in current sequence
 		void FeatCount(Seq &seq, VecShell<double> count, double dadd = 1);
 

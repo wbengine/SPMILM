@@ -51,7 +51,7 @@ namespace trf
 			for (int j = max(1, i - 1); j <= min(m_matLenJump.GetCol()-1, i + 1); j++) {
 				m_matLenJump[i][j] = 1;
 			}
-			//m_matLenJump[i][i] = 0; // avoid the self-jump.
+			m_matLenJump[i][i] = 0; // avoid the self-jump.
 			LineNormalize(m_matLenJump[i].GetBuf(), m_matLenJump.GetCol());
 		}
 	}
@@ -708,7 +708,11 @@ namespace trf
 		for (int nLen = nLenMin; nLen <= nLenMax; nLen++) {
 			LogP logz = Log_Sum(matLogWeight[nLen].GetBuf(), matLogWeight[nLen].GetSize()) - Prob2LogP(nChain);
 			m_logz[nLen] = logz;
-			lout << "logz[" << nLen << "] = " << logz << endl;
+			lout << "logz[" << nLen << "] = " << logz << " logw= ";
+			for (int i = 0; i < matLogWeight[nLen].GetSize(); i++) {
+				lout << matLogWeight[nLen][i] << " ";
+			}
+			lout << endl;
 		}
 	}
 }

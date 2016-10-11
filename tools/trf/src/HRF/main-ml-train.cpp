@@ -82,9 +82,9 @@ _wbMain
 // 	ModelExam exam(&m);
 // 	exam.SetValueRand();
 // 	//exam.SetValueAll(0);
-// 	exam.TestNormalization(2);
-// 	exam.TestExpectation(2);
-// 	exam.TestHiddenExp(2);
+// 	//exam.TestNormalization(2);
+// 	//exam.TestExpectation(2);
+// 	//exam.TestHiddenExp(2);
 // 	exam.TestSample();
 // 	return 1;
 

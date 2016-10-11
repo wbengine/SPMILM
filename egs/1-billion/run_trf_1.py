@@ -57,11 +57,11 @@ def main():
         #feat = 'g4_w_c_ws_cs_cpw.fs'
         maxlen = 100
         tmax = 50000
-        t0 = 10000
+        t0 = 2000
         minibatch = 100
-        gamma_lambda = '2000,0'
+        gamma_lambda = '1000,0'
         gamma_zeta = '0,0.6'
-        reg = 1e-5
+        reg = 1e-6
         thread = 8
 
         write_model = workdir + 'trf_c{}_{}'.format(class_num, feat[0:-3])

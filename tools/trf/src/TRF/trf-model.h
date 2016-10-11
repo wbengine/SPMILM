@@ -140,9 +140,9 @@ namespace trf
 		/// [exact] Calculate the logP in each cluster. Only used for forward-backword algorithms ( class AlgNode)
 		LogP ClusterSum(Seq &seq, int nPos, int nOrder);
 		/// [exact] Exact Normalization, return the logz of given length
-		double ExactNormalize(int nLen);
+		virtual double ExactNormalize(int nLen);
 		/// [exact] Exact Normalization
-		void ExactNormalize();
+		virtual void ExactNormalize();
 		/// [exact] E_{p_l}[f]: Exactly calculate the expectation over x and h for length nLen
 		void GetNodeExp(int nLen, double *pExp);
 		/// [exact] sum_l { n_l/n * E_{p_l}[f] }: Exactly calculate the expectation over x and h

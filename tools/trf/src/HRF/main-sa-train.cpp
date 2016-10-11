@@ -39,13 +39,13 @@ int cfg_nIterTotalNum = 1000;
 int cfg_nMiniBatch = 300;
 int cfg_t0 = 500;
 char *cfg_gamma_lambda = "0,0.8";
-char *cfg_gamma_VHmat = "0,0.8";
-char *cfg_gamma_CHmat = "0,0.8";
-char *cfg_gamma_HHmat = "10,0.8";
+char *cfg_gamma_hidden = "100,0.8";
 char *cfg_gamma_zeta = "0,0.6";
 char *cfg_gamma_var = "0,0.8";
 float cfg_fMomentum = 0;
 float cfg_var_gap = 1e-4;
+float cfg_dir_gap = 1;
+float cfg_zeta_gap = 10;
 bool cfg_bUnupdateLambda = false;
 bool cfg_bUnupdateZeta = false;
 int cfg_nAvgBeg = 0;
@@ -55,6 +55,9 @@ float cfg_fRegL2 = 0;
 bool cfg_bInitValue = false;
 bool cfg_bZeroInit = false;
 int cfg_nPrintPerIter = 100;
+bool cfg_bUnprintTrain = false;
+bool cfg_bUnprintValid = false;
+bool cfg_bUnprintTest = false;
 char *cfg_strWriteAtIter = NULL;
 
 char *cfg_pathWriteMean = NULL;
@@ -82,21 +85,24 @@ _wbMain
 	opt.Add(wbOPT_INT, "mini-batch", &cfg_nMiniBatch, "mini-batch");
 	opt.Add(wbOPT_INT, "t0", &cfg_t0, "t0");
 	opt.Add(wbOPT_STRING, "gamma-lambda", &cfg_gamma_lambda, "learning rate of lambda");
-	opt.Add(wbOPT_STRING, "gamma-VH", &cfg_gamma_VHmat, "learning rate of VHmatrix");
-	opt.Add(wbOPT_STRING, "gamma-CH", &cfg_gamma_CHmat, "learning rate of CHmatrix");
-	opt.Add(wbOPT_STRING, "gamma-HH", &cfg_gamma_HHmat, "learning rate of HHmatrix");
+	opt.Add(wbOPT_STRING, "gamma-hidden", &cfg_gamma_hidden, "learning rate of VHmatrix");
 	opt.Add(wbOPT_STRING, "gamma-zeta", &cfg_gamma_zeta, "learning rate of zeta");
 	opt.Add(wbOPT_STRING, "gamma-var", &cfg_gamma_var, "learning rate of variance");
 	opt.Add(wbOPT_FLOAT, "momentum", &cfg_fMomentum, "the momentum");
-	opt.Add(wbOPT_TRUE, "unupdate-lambda", &cfg_bUnupdateLambda, "don't update lambda");
-	opt.Add(wbOPT_TRUE, "unupdate-zeta", &cfg_bUnupdateZeta, "don't update zeta");
+	opt.Add(wbOPT_TRUE, "not-update-lambda", &cfg_bUnupdateLambda, "don't update lambda");
+	opt.Add(wbOPT_TRUE, "not-update-zeta", &cfg_bUnupdateZeta, "don't update zeta");
 	opt.Add(wbOPT_INT, "tavg", &cfg_nAvgBeg, ">0 then apply averaging");
 	opt.Add(wbOPT_FLOAT, "vgap", &cfg_var_gap, "the threshold of variance");
+	opt.Add(wbOPT_FLOAT, "dgap", &cfg_dir_gap, "the threshold for parameter update");
+	opt.Add(wbOPT_FLOAT, "zgap", &cfg_zeta_gap, "the threshold for zeta update");
 	opt.Add(wbOPT_FLOAT, "L2", &cfg_fRegL2, "regularization L2");
 
 	opt.Add(wbOPT_TRUE, "init", &cfg_bInitValue, "Re-init the parameters");
 	opt.Add(wbOPT_TRUE, "zero-init", &cfg_bZeroInit, "Set the init parameters Zero. Otherwise random init the parameters");
 	opt.Add(wbOPT_INT, "print-per-iter", &cfg_nPrintPerIter, "print the LL per iterations");
+	opt.Add(wbOPT_TRUE, "not-print-train", &cfg_bUnprintTrain, "donot print LL on training set");
+	opt.Add(wbOPT_TRUE, "not-print-valid", &cfg_bUnprintTrain, "donot print LL on valid set");
+	opt.Add(wbOPT_TRUE, "not-print-test", &cfg_bUnprintTrain, "donot print LL on test set");
 	opt.Add(wbOPT_STRING, "write-at-iter", &cfg_strWriteAtIter, "write the LL per iteration, such as [1:100:1000]");
 
 	opt.Add(wbOPT_STRING, "write-mean", &cfg_pathWriteMean, "write the expecataion on training set");
@@ -147,21 +153,24 @@ _wbMain
 #ifdef _Var
 	func.m_var_gap = cfg_var_gap;
 #endif
+	func.m_bPrintTrain = !cfg_bUnprintTrain;
+	func.m_bPrintValie = !cfg_bUnprintValid;
+	func.m_bPrintTest = !cfg_bUnprintTest;
 	func.PrintInfo();
 
 	/* create iterator */
 	SAtrain solve(&func);
 	solve.m_nIterMax = cfg_nIterTotalNum; // fix the iteration number
 	solve.m_gain_lambda.Reset(cfg_gamma_lambda, cfg_t0);
-	solve.m_gain_VHmat.Reset(cfg_gamma_VHmat, cfg_t0);
-	solve.m_gain_CHmat.Reset(cfg_gamma_CHmat, cfg_t0);
-	solve.m_gain_HHmat.Reset(cfg_gamma_HHmat, cfg_t0);
+	solve.m_gain_hidden.Reset(cfg_gamma_hidden, cfg_t0);
 	solve.m_gain_zeta.Reset(cfg_gamma_zeta, cfg_t0);
 	solve.m_bUpdate_lambda = !cfg_bUnupdateLambda;
 	solve.m_bUpdate_zeta = !cfg_bUnupdateZeta;
 	solve.m_fMomentum = cfg_fMomentum;
 	solve.m_nAvgBeg = cfg_nAvgBeg;
 	solve.m_nPrintPerIter = cfg_nPrintPerIter;
+	solve.m_dir_gap = cfg_dir_gap;
+	solve.m_zeta_gap = cfg_zeta_gap;
 	VecUnfold(cfg_strWriteAtIter, solve.m_aWriteAtIter);
 #ifdef _Var
 	//solve.m_var_threshold = cfg_var_gap;

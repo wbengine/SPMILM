@@ -25,10 +25,12 @@ namespace hrf
 		m_nMiniBatchSample = nMinibatch;
 		m_nMiniBatchTraining = nMinibatch;
 		m_TrainSelect.Reset(pTrain);
-
+		m_TrainCache.Reset(pTrain, pModel);
 		/*
 		sampling pi
 		*/
+		m_samplePi.Copy(m_trainPi);
+
 		lout << "Smoothing the pi" << endl;
 		double dMax = 0;
 		int iMax = 0;
@@ -38,7 +40,6 @@ namespace hrf
 				iMax = i;
 			}
 		}
-		m_samplePi.Copy(m_trainPi);
 		for (int i = 1; i < iMax; i++) {
 			m_samplePi[i] = dMax;
 		}
@@ -73,8 +74,8 @@ namespace hrf
 // 		m_vEstimatedVar.Fill(1);
 #endif
 
-		m_nTrainHiddenSampleTimes = 10;
-		m_nSampleHiddenSampleTimes = 10;
+		m_nTrainHiddenSampleTimes = 1;
+		m_nSampleHiddenSampleTimes = 1;
 		m_nCDSampleTimes = 1;
 		m_nSASampleTimes = 1;
 		
@@ -349,12 +350,16 @@ namespace hrf
 			Vec<double> vExpGivenX(m_pModel->GetParamNum());
 			vExpGivenX.Fill(0);
 
-			Array<int> aSeq;
-			m_pCorpusTrain->GetSeq(aRandIdx[i], aSeq);
-			int nLen = aSeq.GetNum();
+			Seq *pSeq = m_TrainCache.GetSeq(aRandIdx[i]);
+			int nLen = pSeq->GetLen();
 
-			m_pModel->GetHiddenExp(VecShell<VocabID>(aSeq.GetBuffer(), nLen), vExpGivenX.GetBuf());
+			/* sample H */
+			for (int j = 0; j < m_nTrainHiddenSampleTimes; j++) {
+				m_pModel->SampleHAndCGivenX(*pSeq); /// several times sampling
+			}
 
+			//m_pModel->GetHiddenExp(VecShell<VocabID>(aSeq.GetBuffer(), nLen), vExpGivenX.GetBuf());
+			m_pModel->FeatCount(*pSeq, vExpGivenX); // count
 
 			m_matEmpiricalExp[tnum] += vExpGivenX;
 			for (int n = 0; n < vExpGivenX.GetSize(); n++) {
@@ -366,7 +371,7 @@ namespace hrf
 			if (m_ftrain.Good()) {
 #pragma omp critical
 				{
-					m_ftrain.PrintArray("%d ", aSeq.GetBuffer(), nLen);
+					pSeq->Write(m_ftrain);
 				}
 			}
 
@@ -396,7 +401,6 @@ namespace hrf
 
 		return GetEmpiricalExp(vExp, vExp2, aRandIdx);
 	}
-#ifndef _CD
 	int SAfunc::GetSampleExp(VecShell<double> &vExp, VecShell<double> &vLen)
 	{
 		int nThread = omp_get_max_threads();
@@ -429,11 +433,15 @@ namespace hrf
 			m_pModel->Sample(*m_aSeqs[tid]);
 			int nLen = min(m_pModel->GetMaxLen(), m_aSeqs[tid]->GetLen());
 
-			//m_aSeqs[threadID]->Print();
-			m_pModel->GetHiddenExp(m_aSeqs[tid]->GetWordSeq(), vExpGivenX.GetBuf());
-			vExpGivenX *= m_trainPi[nLen] / m_pModel->m_pi[nLen];
-			m_matSampleExp[tid] += vExpGivenX;
-//			m_pModel->FeatCount(*m_aSeqs[tid], m_matSampleExp[tid], m_trainPi[nLen] / m_pModel->m_pi[nLen]);
+			/* sample hidden several times */
+			for (int j = 0; j < m_nSampleHiddenSampleTimes; j++) {
+				m_pModel->SampleHAndCGivenX(*m_aSeqs[tid]);     ///< sample hidden
+			}
+
+// 			m_pModel->GetHiddenExp(m_aSeqs[tid]->GetWordSeq(), vExpGivenX.GetBuf());
+// 			vExpGivenX *= m_trainPi[nLen] / m_pModel->m_pi[nLen];
+// 			m_matSampleExp[tid] += vExpGivenX;
+			m_pModel->FeatCount(*m_aSeqs[tid], m_matSampleExp[tid], m_trainPi[nLen] / m_pModel->m_pi[nLen]);
 			m_matSampleLen[tid][nLen]++;
 			vTotalLen[tid] += m_aSeqs[tid]->GetLen();
 
@@ -472,7 +480,7 @@ namespace hrf
 
 		return nTotalLen;
 	}
-#endif //_CD
+
 	void SAfunc::PerfromCD(VecShell<double> &vEmpExp, VecShell<double> &vSamExp, VecShell<double> &vEmpExp2, VecShell<double> &vLen)
 	{
 		int nThread = omp_get_max_threads();
@@ -593,7 +601,7 @@ namespace hrf
 		m_matSampleLen.Reset(nThread, m_pModel->GetMaxLen() + 1);
 		m_matSampleLen.Fill(0);
 
-		Array<VocabID> aSeq;
+		//Array<VocabID> aSeq;
 		Vec<int> aRanIdx(m_nMiniBatchTraining);
 		Vec<int> aRanLen(m_nMiniBatchTraining);
 		m_TrainSelect.GetIdx(aRanIdx.GetBuf(), m_nMiniBatchTraining);
@@ -607,13 +615,18 @@ namespace hrf
 			vExpGivenX.Fill(0);
 
 			/* read a sequence*/
-			m_pCorpusTrain->GetSeq(aRanIdx[i], aSeq);
-			int nLen = aSeq.GetNum();
+			Seq *pSeq = m_TrainCache.GetSeq(aRanIdx[i]);
+			int nLen = pSeq->GetLen();
 			aRanLen[i] = nLen; /// record the length of the training sequence
 
+			/* sample H */
+			for (int j = 0; j < m_nTrainHiddenSampleTimes; j++) {
+				m_pModel->SampleHAndCGivenX(*pSeq); /// several times sampling
+			}
+
 			/* empirical expectation */
-			m_pModel->GetHiddenExp(VecShell<int>(aSeq, nLen), vExpGivenX.GetBuf()); /// count 
-			//vExpGivenX /= m_nTrainHiddenSampleTimes; /// expectation
+			m_pModel->FeatCount(*pSeq, vExpGivenX); /// count 
+			//m_pModel->GetHiddenExp(VecShell<int>(aSeq, nLen), vExpGivenX.GetBuf()); /// count 
 			m_matEmpiricalExp[tnum] += vExpGivenX;
 			for (int n = 0; n < vExpGivenX.GetSize(); n++) {
 				m_matEmpiricalExp2[tnum][n] += pow(vExpGivenX[n], 2);
@@ -622,7 +635,7 @@ namespace hrf
 			if (m_ftrain.Good()) {
 #pragma omp critical
 				{
-					m_ftrain.PrintArray("%d ", aSeq.GetBuffer(), nLen);
+					pSeq->Write(m_ftrain);
 				}
 			}
 		}
@@ -641,8 +654,6 @@ namespace hrf
 		for (int i = 0; i < m_nMiniBatchTraining; i++)
 		{
 			int threadID = omp_get_thread_num();
-// 			Vec<double> vExpGivenX(m_pModel->GetParamNum());
-// 			vExpGivenX.Fill(0);
 
 			/* sample a length */
 			int nLen = aRanLen[i];
@@ -654,15 +665,15 @@ namespace hrf
 			for (int j = 0; j < m_nSASampleTimes; j++)
 				m_pModel->MarkovMove(*pSeq);
 				//m_pModel->Sample(*pSeq);
+
 			/* sample hidden several times */
-// 			for (int j = 0; j < m_nSampleHiddenSampleTimes; j++) {
-// 				m_pModel->SampleHAndCGivenX(*pSeq);     ///< sample hidden
-// 				//m_pModel->CountFeat(*pSeq, vExpGivenX); ///< count
-// 			}
+			for (int j = 0; j < m_nSampleHiddenSampleTimes; j++) {
+				m_pModel->SampleHAndCGivenX(*pSeq);     ///< sample hidden
+			}
 
 			/* expectation */
-//			m_pModel->CountFeat(*pSeq, m_matSampleExp[threadID]);
-			m_pModel->GetHiddenExp(pSeq->GetWordSeq(), m_matSampleExp[threadID].GetBuf());
+			m_pModel->FeatCount(*pSeq, m_matSampleExp[threadID]);
+			//m_pModel->GetHiddenExp(pSeq->GetWordSeq(), m_matSampleExp[threadID].GetBuf());
 			m_matSampleLen[threadID][nLen]++;
 
 			if (m_fsamp.Good()) {
@@ -812,16 +823,16 @@ namespace hrf
 #ifdef _CD
 		PerfromCD(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
 #else
-		PerfromSA(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
+		//PerfromSA(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
 
 		/* get empirical expectation */
-// 		int nTrainLen = GetEmpiricalExp(m_vEmpExp, m_vEmpExp2);
-// 		
+		int nTrainLen = GetEmpiricalExp(m_vEmpExp, m_vEmpExp2);
+ 		
  		/* get theoretical expectation */
-		Vec<double> vTempSampleExp(nWeightNum); 
+		//Vec<double> vTempSampleExp(nWeightNum); 
 		// don't use the sample expectation generated here.
 		// only use the length distribution
-		int nSampLen = GetSampleExp(vTempSampleExp, m_vSampleLen);
+		int nSampLen = GetSampleExp(m_vSampleExp, m_vSampleLen);
 
 		
 
@@ -833,6 +844,7 @@ namespace hrf
 		for (int i = 0; i < nFeatNum; i++) {
 			pdGradient[i] = ( m_vEmpFeatExp[i] - m_vSampleExp[i] ) / m_vEmpFeatVar[i];
 		}
+
 		for (int i = nFeatNum; i < nWeightNum; i++) {
 #ifdef _Var
 			double dVar = m_vExp2Value[i - nFeatNum] - pow(m_vExpValue[i - nFeatNum], 2);
@@ -841,6 +853,28 @@ namespace hrf
 			pdGradient[i] = m_vEmpExp[i] - m_vSampleExp[i];
 #endif
 		}
+
+// 		static bool bUpdateVHmat = false;
+// 		static int times = 0;
+// 		times++;
+// 		if (times % 10 == 0) {
+// 			bUpdateVHmat = !bUpdateVHmat;
+// 		}
+// 		if (bUpdateVHmat) {
+// 			for (int i = nFeatNum + m_pModel->m_m3dVH.GetSize() + m_pModel->m_m3dCH.GetSize(); i < nWeightNum; i++) {
+// 				pdGradient[i] = 0;
+// 			}
+// 		}
+// 		else {
+// 			for (int i = nFeatNum; i < nFeatNum + m_pModel->m_m3dVH.GetSize() + m_pModel->m_m3dCH.GetSize(); i++) {
+// 				pdGradient[i] = 0;
+// 			}
+// 		}
+		for (int i = 0; i < nFeatNum; i++) {
+			pdGradient[i] = 0;
+		}
+		
+		
 
 		/*
 			Zeta update
@@ -926,21 +960,21 @@ namespace hrf
 
 		
 		// calcualte LL using exact hidden expectation
-		if (m_pCorpusTrain) pdValues[nValue++] = -GetLL(m_pCorpusTrain);
-		if (m_pCorpusValid) pdValues[nValue++] = -GetLL(m_pCorpusValid);
-		if (m_pCorpusTest) pdValues[nValue++] = -GetLL(m_pCorpusTest);
+		if (m_pCorpusTrain && m_bPrintTrain) pdValues[nValue++] = -GetLL(m_pCorpusTrain);
+		if (m_pCorpusValid && m_bPrintValie) pdValues[nValue++] = -GetLL(m_pCorpusValid);
+		if (m_pCorpusTest && m_bPrintTest) pdValues[nValue++] = -GetLL(m_pCorpusTest);
 			
 
 		/* true Z_L to get the LL */
-		if (m_pModel->m_hlayer * m_pModel->m_hnode < 10 && m_pModel->m_pVocab->GetSize() < 100) {
+		if (m_pModel->m_hlayer * m_pModel->m_hnode < 5 && m_pModel->m_pVocab->GetSize() < 100) {
 			Vec<LogP> oldZeta(m_pModel->m_zeta.GetSize());
 			oldZeta = m_pModel->m_zeta;
 
 			m_pModel->ExactNormalize(); // normalization
 			trueZeta.Copy(m_pModel->m_zeta);
-			if (m_pCorpusTrain) pdValues[nValue++] = -GetLL(m_pCorpusTrain);
-			if (m_pCorpusValid) pdValues[nValue++] = -GetLL(m_pCorpusValid);
-			if (m_pCorpusTest) pdValues[nValue++] = -GetLL(m_pCorpusTest);
+			if (m_pCorpusTrain && m_bPrintTrain) pdValues[nValue++] = -GetLL(m_pCorpusTrain);
+			if (m_pCorpusValid && m_bPrintValie) pdValues[nValue++] = -GetLL(m_pCorpusValid);
+			if (m_pCorpusTest && m_bPrintTest) pdValues[nValue++] = -GetLL(m_pCorpusTest);
 
 			m_pModel->SetZeta(oldZeta.GetBuf());
 		}
@@ -1079,7 +1113,7 @@ namespace hrf
 				bPrintCmd = lout.bOutputCmd();
 				lout.bOutputCmd() = true;
 				lout << "ExValues={ ";
-				cout << setprecision(2) << setiosflags(ios::fixed);
+				cout << setprecision(3) << setiosflags(ios::fixed);
 				for (int i = 0; i < nExValueNum; i++)
 					lout << dExValues[i] << " ";
 				lout << "}" << endl;
@@ -1135,9 +1169,7 @@ namespace hrf
 	void SAtrain::UpdateGamma(int nIterNum)
 	{
 		m_gamma_lambda = m_gain_lambda.Get(nIterNum);
-		m_gamma_HH = m_gain_HHmat.Get(nIterNum);
-		m_gamma_CH = m_gain_CHmat.Get(nIterNum);
-		m_gamma_VH = m_gain_VHmat.Get(nIterNum);
+		m_gamma_hidden = m_gain_hidden.Get(nIterNum);
 		m_gamma_zeta = m_gain_zeta.Get(nIterNum);
 
 // 		if (m_fMomentum > 0 && nIterNum > m_gain_lambda.t0) {
@@ -1150,9 +1182,7 @@ namespace hrf
 #endif
 		
 		lout_Solve << "g_lambda=" << m_gamma_lambda
-			<< " g_VH=" << m_gamma_VH
-			<< " g_HH=" << m_gamma_HH
-			<< " g_CH=" << m_gamma_CH
+			<< " g_hidden=" << m_gamma_hidden
 			<< " g_zeta=" << m_gamma_zeta
 			<< " momentum=" << m_fMomentum
 			<< endl;
@@ -1164,29 +1194,18 @@ namespace hrf
 
 		SAfunc* pSA = (SAfunc*)m_pfunc;
 		int nNgramFeatNum = pSA->GetNgramFeatNum();
-		int nVHsize = pSA->GetVHmatSize();
-		int nCHsize = pSA->GetCHmatSize();
-		int nHHsize = pSA->GetHHmatSize();
 		int nWeightNum = pSA->GetWeightNum();
 		int nZetaNum = pSA->GetZetaNum();
 
-		lout_assert(nWeightNum == nNgramFeatNum + nVHsize + nCHsize + nHHsize);
-
 		// update lambda
-
-		
 		for (int i = 0; i < nNgramFeatNum; i++) {
 			pDir[i] = m_gamma_lambda * pGradient[i];
 		}
-		for (int i = nNgramFeatNum; i < nNgramFeatNum + nVHsize; i++) {
-			pDir[i] = m_fMomentum * pDir[i] + m_gamma_VH * pGradient[i];
+		for (int i = nNgramFeatNum; i < nWeightNum; i++) {
+			pDir[i] = m_fMomentum * pDir[i] + m_gamma_hidden * pGradient[i];
 		}
-		for (int i = nNgramFeatNum + nVHsize; i < nNgramFeatNum + nVHsize + nCHsize; i++) {
-			pDir[i] = m_fMomentum * pDir[i] + m_gamma_CH * pGradient[i];
-		}
-		for (int i = nNgramFeatNum + nVHsize + nCHsize; i < nWeightNum; i++) {
-			pDir[i] = m_fMomentum * pDir[i] + m_gamma_HH * pGradient[i];
-		}
+
+		
 		
 #ifdef _Var
 		/* update exp and exp2 */
@@ -1199,9 +1218,19 @@ namespace hrf
 
 		// update zeta
 		for (int i = nWeightNum; i < nWeightNum + nZetaNum; i++) {
-			pDir[i] = min(m_gamma_zeta, 1.0*pSA->m_pModel->GetMaxLen()*pSA->m_pModel->m_pi[i - nWeightNum]) * pGradient[i];
+			pDir[i] = m_gamma_zeta * pGradient[i];
+			//pDir[i] = min(m_gamma_zeta, 1.0*pSA->m_pModel->GetMaxLen()*pSA->m_pModel->m_pi[i - nWeightNum]) * pGradient[i];
 		}
-	
+
+
+		// for gap
+		int n_dgap_cutnum = CutValue(pDir, nWeightNum, m_dir_gap);
+		int n_zgap_cutnum = CutValue(pDir+nWeightNum, nZetaNum, m_zeta_gap);
+		lout << "cut-dir="; 
+		lout_variable_rate(n_dgap_cutnum, nWeightNum);
+		lout << "  cut-zeta=";
+		lout_variable_rate(n_dgap_cutnum, nWeightNum);
+		lout << endl;
 	}
 	void SAtrain::Update(double *pdParam, const double *pdDir, double dStep)
 	{
@@ -1257,13 +1286,32 @@ namespace hrf
 	{
 		lout << "[SATrain] *** Info: ***" << endl;
 		GAIN_INFO(m_gain_lambda);
-		GAIN_INFO(m_gain_VHmat);
-		GAIN_INFO(m_gain_CHmat);
-		GAIN_INFO(m_gain_HHmat);
+		GAIN_INFO(m_gain_hidden);
 #ifdef _Var
 		GAIN_INFO(m_gain_var);
 #endif
 		GAIN_INFO(m_gain_zeta);
+		lout << "  "; lout_variable(m_dir_gap);
+		lout << "  "; lout_variable(m_zeta_gap);
 		lout << "[SATrain] *** [End] ***" << endl;
+	}
+
+	int SAtrain::CutValue(double *p, int num, double gap)
+	{
+		int nCutNum = 0;
+		if (gap <= 0)
+			return nCutNum;
+
+		for (int i = 0; i < num; i++) {
+			if (p[i] > gap) {
+				p[i] = gap;
+				nCutNum++;
+			}
+			else if (p[i] < -gap) {
+				p[i] = -gap;
+				nCutNum++;
+			}
+		}
+		return nCutNum;
 	}
 }
