@@ -73,6 +73,9 @@ namespace trf
 	}
 	LogP Model::GetLogProb(Seq &seq, bool bNorm /* = true */)
 	{
+		if (!m_pFeat)
+			return 0;
+
 		Array<int> afeat;
 		m_pFeat->Find(afeat, seq);
 
@@ -634,12 +637,33 @@ namespace trf
 		this->GetParam(vParamsP0.GetBuf());
 
 		/* set the P_n */
-		/* Set with all the unigram values, i.e. all the VH and CH */
+		/* Set all the unigram values */
 		vParamsPn.Fill(0);
+		Seq seq(10);
+		seq.x.Fill(0);
+		Vec<LogP> aWordLogp(m_pVocab->GetSize()); ///< record the log-prob for each word at each position
+		for (int w = 0; w < m_pVocab->GetSize(); w++) {
+			seq.x[word_layer][1] = w;
+			seq.x[class_layer][1] = m_pVocab->GetClass(w);
+			Array<int> afind;
+			m_pFeat->Find(afind, seq, 1, 1);
+			lout_assert(afind.GetNum() <= 2);
+			double dvalue = 0;
+			for (int i = 0; i < afind.GetNum(); i++) {
+				vParamsPn[afind[i]] = vParamsP0[afind[i]];
+				dvalue += vParamsP0[afind[i]];
+			}
+			aWordLogp[w] = dvalue;
+		}
 		/* calculate the normalization constants of P_n for each length */
 		Vec<LogP> alogz_pn(m_maxlen + 1);
-		for (int i = 0; i <= m_maxlen; i++)
-			alogz_pn[i] = i * log((double)m_pVocab->GetSize());
+		LogP logsum = Log_Sum(aWordLogp.GetBuf(), aWordLogp.GetSize());
+		LogLineNormalize(aWordLogp.GetBuf(), aWordLogp.GetSize());  /// normalize, for the following sampling
+		for (int i = 0; i <= m_maxlen; i++) {
+			alogz_pn[i] = i * logsum;
+			//alogz_pn[i] = i * log((double)m_pVocab->GetSize());
+		}
+		
 
 
 		/* In the intermediate models,
@@ -661,7 +685,14 @@ namespace trf
 		for (int i = 1; i <= m_maxlen; i++) {
 			for (int j = 0; j < nChain; j++) {
 				matSeq[i][j] = new Seq(i);
-				matSeq[i][j]->Random(m_pVocab);
+				/* sample the initial sequence */
+				//matSeq[i][j]->Random(m_pVocab);
+				Seq *pSeq = matSeq[i][j];
+				for (int nPos = 0; nPos < pSeq->GetLen(); nPos++) {
+					pSeq->GetWordSeq()[nPos] = LogLineSampling(aWordLogp.GetBuf(), aWordLogp.GetSize());
+					pSeq->GetClassSeq()[nPos] = m_pVocab->GetClass(pSeq->GetWordSeq()[nPos]);
+				}
+
 				matLogPOld[i][j] = pInterModel->GetLogProb(*matSeq[i][j], false) - alogz_pn[i];
 			}
 		}

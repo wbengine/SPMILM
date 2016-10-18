@@ -77,8 +77,11 @@ namespace hrf
 
 	void Model::SetParam(PValue *pParam)
 	{
-		trf::Model::SetParam(pParam);
-		pParam += m_pFeat->GetNum();
+		if (m_pFeat) {
+			trf::Model::SetParam(pParam);
+			pParam += m_pFeat->GetNum();
+		}
+		
 		HRF_VALUE_SET(pParam, m_m3dVH);
 		HRF_VALUE_SET(pParam, m_m3dCH);
 		HRF_VALUE_SET(pParam, m_m3dHH);
@@ -91,8 +94,10 @@ namespace hrf
 	}
 	void Model::GetParam(PValue *pParam)
 	{
-		trf::Model::GetParam(pParam);
-		pParam += m_pFeat->GetNum();
+		if (m_pFeat) {
+			trf::Model::GetParam(pParam);
+			pParam += m_pFeat->GetNum();
+		}
 		HRF_VALUE_GET(pParam, m_m3dVH);
 		HRF_VALUE_GET(pParam, m_m3dCH);
 		HRF_VALUE_GET(pParam, m_m3dHH);
@@ -108,7 +113,8 @@ namespace hrf
 	{
 		LogP logSum = trf::Model::GetLogProb(seq.x, false);
 
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 
 		// Vocab * Hidden
 		for (int i = 0; i < seq.GetLen(); i++) {
@@ -301,7 +307,8 @@ namespace hrf
 	{
 		LogP LogSum = 0;
 
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 
 		// Word * hidden
 		LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
@@ -348,7 +355,8 @@ namespace hrf
 	LogP Model::LayerClusterSum(Seq &seq, int nlayer, int nPos, int nOrder)
 	{
 		LogP LogSum = 0;
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 
 		// Word * hidden
 		LogSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos], nlayer);
@@ -507,7 +515,8 @@ namespace hrf
 		HHexp.Fill(0);
 		Bexp.Fill(0);
 
-		double dfactor = 1.0 / nLen;
+		//double dfactor = 1.0 / nLen;
+		double dfactor = 1.0;
 
 		//int nMaxOrder = m_nodeCal.m_nOrder;
 		int nClusterNum = nLen - m_nodeCal.m_nOrder + 1;
@@ -651,7 +660,8 @@ namespace hrf
 			nClusterNum = 1;
 			nClusterDim = nLen;
 		}
-		double dfactor = 1.0 / nLen;
+		//double dfactor = 1.0 / nLen;
+		double dfactor = 1.0;
 		Vec<int> hseq(nLen);
 		Mat<HValue> h(nLen, m_hlayer * m_hnode);
 		for (int pos = 0; pos < nClusterNum; pos++) {
@@ -834,7 +844,8 @@ namespace hrf
 		Mat<LogP> matLogp(m_hlayer*m_hnode, 2); /// save the logp of 0 or 1 for each hidden vairables
 		matLogp.Fill(0);
 
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 
 		// HH connection
 		if (nPos - 1 >= 0 && nPos - 1 <= seq.GetLen() - 1) {
@@ -903,7 +914,8 @@ namespace hrf
 	{
 		// Only consider the HH-matrix, as VH matrix has been considered in GetLogWeightSumForW
 		LogP logSum = 0;
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 		// Hidden * Hidden
 		for (int i = max(0, nPos - 1); i <= min(seq.GetLen() - 2, nPos); i++) {
 			logSum += dfactor * SumHHWeight(m_m3dHH, seq.h[i], seq.h[i + 1]);
@@ -918,7 +930,8 @@ namespace hrf
 		LogP logSum = trf::Model::GetReducedModelForC(seq.x, nPos);
 		
 		// CH
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 		if (m_m3dCH.GetSize() > 0) {
 			logSum += dfactor * SumVHWeight(m_m3dCH[seq.cseq()[nPos]], seq.h[nPos]);
 		}
@@ -930,7 +943,8 @@ namespace hrf
 		// word features
 		LogP logSum = trf::Model::GetReducedModelForW(seq.x, nPos);
 		// VH
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 		logSum += dfactor * SumVHWeight(m_m3dVH[seq.wseq()[nPos]], seq.h[nPos]);
 		return logSum;
 	}
@@ -1181,7 +1195,8 @@ namespace hrf
 		Mat3dShell<double> VHcount, Mat3dShell<double> CHcount, Mat3dShell<double> HHcount, 
 		MatShell<double> Bcount, double dadd /* = 1 */)
 	{
-		double dfactor = 1.0 / seq.GetLen();
+		//double dfactor = 1.0 / seq.GetLen();
+		double dfactor = 1.0;
 		/* VH count */
 		for (int i = 0; i < seq.GetLen(); i++) {
 			for (int k = 0; k < m_hlayer*m_hnode; k++) {
@@ -1270,6 +1285,187 @@ namespace hrf
 		return dsum;
 	}
 
+	void Model::PerformSAMS(int nMinibatch, int tmax, int t0, int beta, double zgap)
+	{
+		int nThread = omp_get_max_threads();
+		Mat<double> m_matSampleLen(nThread, GetMaxLen() + 1); ///< the length count of sample of each thread
+		Vec<double> m_vecSampleLen(GetMaxLen() + 1);
+
+		// sequence for each threads
+		Array<Seq*> aSeqs;
+		for (int i = 0; i < nThread; i++) {
+			aSeqs[i] = new Seq;
+			RandSeq(*aSeqs[i]);
+		}
+
+		
+		Vec<LogP> zeta;
+		zeta.Copy(m_zeta);
+
+		for (int t = 1; t <= tmax; t++) {
+			m_matSampleLen.Fill(0);
+			m_vecSampleLen.Fill(0);
+			// sampling
+#pragma omp parallel for
+			for (int m = 0; m < nMinibatch; m++) {
+				int tid = omp_get_thread_num();
+				this->Sample(*aSeqs[tid]);
+				int nLen = min(GetMaxLen(), aSeqs[tid]->GetLen());
+				m_matSampleLen[tid][nLen]++;
+			}
+
+			// Count
+			for (int i = 0; i < nThread; i++) {
+				m_vecSampleLen += m_matSampleLen[i];
+			}
+			m_vecSampleLen /= nMinibatch;
+
+			// learning rate
+			double gamma = 0;
+			if (t <= t0) {
+				gamma = 1.0 / pow(t, beta);
+			}
+			else {
+				gamma = 1.0 / (pow(t0, beta) + t - t0);
+			}
+
+			// update
+			for (int i = 1; i <= GetMaxLen(); i++) {
+				zeta[i] += min(zgap, gamma * m_vecSampleLen[i] / m_pi[i]);
+			}
+			this->SetZeta(zeta.GetBuf());
+		}
+
+
+	}
+	
+	LogP Model::GetLogProb_AIS(VecShell<VocabID> &x, int nChain /* = 100 */, int nIntermediate /* = 10000 */)
+	{
+		int nLen = x.GetSize();
+		int nParamsNumOfIntermediateModel = GetParamNum() - m_pFeat->GetNum();
+
+		Vec<PValue> vParamsPn(nParamsNumOfIntermediateModel);
+		Vec<PValue> vParamsP0(nParamsNumOfIntermediateModel);
+		Vec<PValue> vParamsCur(nParamsNumOfIntermediateModel);
+
+		/* get the parameters of current model */
+		PValue *p = vParamsP0.GetBuf();
+		HRF_VALUE_GET(p, m_m3dVH);
+		HRF_VALUE_GET(p, m_m3dCH);
+		HRF_VALUE_GET(p, m_m3dHH);
+		HRF_VALUE_GET(p, m_matBias);
+		
+
+		/* get the parameters of the distribution P_n */
+		/* Set with all the unigram values, i.e. all the VH and CH and bias*/
+		vParamsPn.Copy(vParamsP0);
+		p = vParamsPn.GetBuf() + m_m3dVH.GetSize() + m_m3dCH.GetSize();
+		memset(p, 0, sizeof(PValue)*m_m3dHH.GetSize());
+
+		/* calculate the normalization constants of P_n */
+ 		LogP logz_pn = 0;
+		for (int nPos = 0; nPos < nLen; nPos++) {
+			VocabID xid = x[nPos];
+			VocabID cid = m_pVocab->GetClass(xid);
+			/* sum_{hi} Q(hi)*/
+			double d2 = 0;
+			for (int k = 0; k < m_hlayer * m_hnode; k++) {
+				if (cid != trf::VocabID_none && m_m3dCH.GetSize() > 0) {
+					d2 += trf::Log_Sum(m_m3dVH[xid][k][0] + m_m3dCH[cid][k][0] + m_matBias[k][0], m_m3dVH[xid][k][1] + m_m3dCH[cid][k][1] + m_matBias[k][1]);
+				}
+				else { // if cid == VocabID_none, it means on class infromation
+					d2 += trf::Log_Sum(m_m3dVH[xid][k][0] + m_matBias[k][0], m_m3dVH[xid][k][1] + m_matBias[k][1]);
+				}
+			}
+			logz_pn += d2;
+		}
+
+		// set intermediate model
+		Array<Model*> aInterModel;
+		aInterModel.SetNum(1);
+		for (int i = 0; i < aInterModel.GetNum(); i++) {
+			/* In the new created model :
+			There are no word/class ngram features;
+			All the word/class ngram parameters are not used, as we just sample H
+			*/
+			aInterModel[i] = new Model(m_pVocab, m_hlayer, m_hnode, m_maxlen);
+			aInterModel[i]->SetPi(m_pi.GetBuf());
+			aInterModel[i]->m_zeta.Copy(m_zeta);
+			aInterModel[i]->m_logz.Copy(m_logz);
+			lout_assert(aInterModel[i]->GetParamNum() == nParamsNumOfIntermediateModel);
+		}
+		Array<LogP> aLogWeight;
+		aLogWeight.SetNum(nChain);
+		aLogWeight.Fill(0);
+
+		//Title::Precent(0, true, nChain, "AIS");
+		//#pragma omp parallel for firstprivate(vParamsCur)
+		for (int k = 0; k < nChain; k++) {
+			int tid = 0;//omp_get_thread_num();
+			Model *pInterModel = aInterModel[tid];
+			Seq seq(nLen, m_hlayer, m_hnode);
+			seq.x.Set(x.GetBuf(), x.GetSize(), m_pVocab);
+			
+			/* sample the initial sequence */
+			for (int nPos = 0; nPos < seq.GetLen(); nPos++) {
+				VocabID xid = x[nPos];
+				VocabID cid = m_pVocab->GetClass(xid);
+				for (int k = 0; k < m_hlayer * m_hnode; k++) {
+					LogP curP[2];
+					if (cid != trf::VocabID_none && m_m3dCH.GetSize() > 0) {
+						curP[0] = m_m3dVH[xid][k][0] + m_m3dCH[cid][k][0] + m_matBias[k][0];
+						curP[1] = m_m3dVH[xid][k][1] + m_m3dCH[cid][k][1] + m_matBias[k][1];
+					}
+					else { // if cid == VocabID_none, it means on class infromation
+						curP[0] = m_m3dVH[xid][k][0] + m_matBias[k][0];
+						curP[1] = m_m3dVH[xid][k][1] + m_matBias[k][1];
+					}
+					trf::LogLineNormalize(curP, 2);
+					seq.h[nPos][k] = trf::LogLineSampling(curP, 2);
+				}
+			}
+
+
+			pInterModel->SetParam(vParamsPn.GetBuf());
+			//LogP logp_old = - GetHNode() * nLen * log(2);
+			LogP logp_old = pInterModel->GetLogProb(seq, false) - logz_pn;
+
+			double log_w = 0;
+			for (int t = nIntermediate - 1; t >= 0; t--) {
+				/* set the intermediate parameters */
+				//double beta = 1.0 / nIntermediate * t;
+				double beta = trf::GetAISFactor(t, nIntermediate);
+				for (int i = 0; i < vParamsCur.GetSize(); i++)
+					vParamsCur[i] = vParamsP0[i] * (1 - beta) + vParamsPn[i] * beta;
+				pInterModel->SetParam(vParamsCur.GetBuf());
+
+				/* compute the weight */
+				LogP rate = pInterModel->GetLogProb(seq) - logp_old;
+				log_w += rate;
+
+				/* sample H */
+				pInterModel->SampleHAndCGivenX(seq);
+				logp_old = pInterModel->GetLogProb(seq);
+			}
+
+			aLogWeight[k] = log_w; // record the log-weight
+			//Title::Precent();
+		}
+
+		for (int i = 0; i < aInterModel.GetNum(); i++) {
+			SAFE_DELETE(aInterModel[i]);
+		}
+
+
+		LogP logprob = trf::Log_Sum(aLogWeight.GetBuffer(), aLogWeight.GetNum()) - trf::Prob2LogP(nChain);
+
+		/* the logprob of all the x and c */
+		Seq seq(nLen, m_hlayer, m_hnode);
+		seq.x.Set(x.GetBuf(), x.GetSize(), m_pVocab);
+		LogP logpx = FeatClusterSum(seq.x, 0, nLen);
+
+		return logprob + logpx;
+	}
 
 
 	/************************************************************************/

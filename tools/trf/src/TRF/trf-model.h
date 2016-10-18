@@ -98,7 +98,7 @@ namespace trf
 		/// Get maximum order
 		int GetMaxOrder() const { return m_pFeat->GetMaxOrder(); }
 		/// Get parameter number
-		int GetParamNum() const { return m_pFeat->GetNum(); }
+		int GetParamNum() const { return (m_pFeat) ? m_pFeat->GetNum() : 0; }
 		/// reset, the maxlen is the length excluding the beg/end symbols.
 		void Reset(Vocab *pv, int maxlen);
 		/// Set the parameters
@@ -115,6 +115,13 @@ namespace trf
 			for (int i = 1; i <= m_maxlen; i++) {
 				m_zeta[i] = (LogP)( pzeta[i] - pzeta[1] );
 				m_logz[i] = (LogP)( m_zeta[i] + m_logz[1] );
+			}
+		}
+		template <typename T>
+		void GetZeta(T *pzeta)
+		{
+			for (int i = 1; i <= m_maxlen; i++) {
+				pzeta[i] = (T) m_zeta[i];
 			}
 		}
 		/// calculate the probability

@@ -73,10 +73,11 @@ namespace hrf
 		exp1.Fill(0);
 		exp2.Fill(0);
 
-		LogP mglogp1, mglogp2;
+		LogP mglogp1, mglogp2, mplogpAIS;
 
 		pm->GetHiddenExp(wseq, exp1.GetBuf());
 		mglogp1 = pm->GetLogProb(wseq, true);
+		mplogpAIS = pm->GetLogProb_AIS(wseq);
 
 		Seq seq(nLen, pm->m_hlayer, pm->m_hnode);
 		seq.x.Set(wseq.GetBuf(), nLen, pm->GetVocab());
@@ -95,6 +96,7 @@ namespace hrf
 
 		lout_variable(mglogp1);
 		lout_variable(mglogp2);
+		lout_variable(mplogpAIS);
 
 		for (int i = 0; i < pm->GetParamNum(); i++) {
 			if (fabs(exp1[i] - exp2[i]) > 1e-4) {

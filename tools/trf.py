@@ -142,6 +142,18 @@ def PlotLog(name_pack, baseline=[]):
     plt.show()
 
 
+# read the logz from .model files
+def LoadLogz(file):
+    with open(file) as f:
+        for line in f:
+            if line.find('logz=') != -1:
+                a = line.split()[1:-1]
+                logz = [float(i) for i in a]
+                return logz
+    print('[ERROR] LoadLogz: cannot find logz in {}'.format(file))
+    return []
+
+
 class model:
     def __init__(self, bindir, workdir):
         self.bindir = wb.folder(bindir)
@@ -172,11 +184,16 @@ class model:
             return
 
         # cluster
-        cmd = self.bindir + 'word-cluster -txt {} -num {} -tag-vocab {} '.format(fid, class_num, fid + '.vocab')
-        System(cmd)
+        tagvocab = '{}_c{}.vocab'.format(fid, class_num)
+        if os.path.exists(tagvocab):
+            print('There exist {}'.format(tagvocab))
+        else:
+            cmd = self.bindir + 'word-cluster -txt {} -num {} -tag-vocab {} '.format(fid, class_num, tagvocab)
+            System(cmd)
 
+        # transform
         print('output vocabulary to ' + write_list)
-        with open(fvocab) as fv, open(fid + '.vocab') as ftag, open(write_list, 'wt') as fw:
+        with open(fvocab) as fv, open(tagvocab) as ftag, open(write_list, 'wt') as fw:
             for linea, lineb in zip(fv, ftag):
                 a = linea.split()
                 b = lineb.split()
@@ -213,7 +230,12 @@ class model:
     # return the -LL, if exists
     def use(self, config, bPrint=True):
         write_log = self.workdir + 'trf_model_use.log'
-        cmd = self.bindir + 'trf ' + config + ' -log {}'.format(write_log)
+        if config.find('-log') == -1:
+             config += ' -log {}'.format(write_log)
+        else:
+            write_log = config[config.find('-log'):].split()[1]
+
+        cmd = self.bindir + 'trf ' + config
         if bPrint:
             System(cmd)
         else:

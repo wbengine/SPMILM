@@ -37,6 +37,44 @@ def data_wsj92nbest():
     return data_verfy([nbest, trans, ac, lm])
 
 
+def log_add(a,b):
+    if a>b:
+        return a + np.log(1 + np.exp(b-a))
+    else:
+        return b + np.log(np.exp(a-b) + 1)
+def log_sub(a,b):
+    if a>b:
+        return a + np.log(abs(1 - np.exp(b-a)))
+    else:
+        return b + np.log(abs(np.exp(a-b) - 1))
+def log_sum(a):
+    s = a[0]
+    for i in a[1:]:
+        s = log_add(s, i)
+    return s
+def log_mean(a):
+    return log_sum(a) - np.log(len(a))
+def log_var(a):
+    m = log_mean(a)
+    b = []
+    for i in a:
+        b.append(log_sub(i, m) * 2)
+    return log_mean(b)
+
+def mat_mean(mat):
+    m = []
+    for a in np.array(mat):
+        m.append(np.log(np.mean(np.exp(a))))
+    return m
+
+
+def mat_var(mat):
+    var = []
+    for a in np.array(mat):
+        var.append(np.log(np.var(np.exp(a))))
+    return var
+
+
 def main():
     if len(sys.argv) == 1:
         print('\"python run.py -train\" train LSTM\n',
@@ -44,7 +82,7 @@ def main():
               '\"python run.py -wer\" compute WER'
               )
 
-    run_times = range(0, 10)   # for multiple run
+    run_times = range(0, 4)   # for multiple run
 
     
     bindir = '../../tools/trf/bin/'
@@ -57,7 +95,7 @@ def main():
     valid = workdir + 'valid.id'
     test = workdir + 'test.id'
     vocab = workdir + 'vocab_c{}.list'.format(class_num)
-    thread = 8
+    thread = 18
 
     ais_chain = 10
     ais_inter = 20000
@@ -116,6 +154,34 @@ def main():
             fres.AddLL(name, LL, id_data)
             fres.AddWER(name, wer)
             fres.Add(name, ['LL-wsj', 'PPL-wsj'], [LL_templ, PPL_templ])
+
+    if '-cmp' in sys.argv:
+        # compare the variance of exp(logz) with the variance of AIS weight
+        # Load the logz of 10 independent runs
+        multi_run = 10
+        logzs = []
+        for i in range(multi_run):
+            logz = trf.LoadLogz(workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0.ais10_20000.run{}.model'.format(i))
+            logzs.append(logz[0:33])
+        mat_logzs = np.matrix(logzs).T
+
+        # Load the weight of each length
+        logws = []
+        with open(workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0.ais10_20000.log') as f:
+            for line in f:
+                idx = line.find('logw=')
+                if idx != -1:
+                    a = line[idx:].split()[1:]
+                    logws.append([float(i) for i in a])
+        mat_logws = np.matrix(logws)
+
+        w_var = mat_var(mat_logws)
+        z_var = mat_var(mat_logzs)
+
+        for i in range(len(w_var)):
+            rate = np.exp(w_var[i] - z_var[i])
+            print('len={} w_var={} z_var={} rate={}'.format(i+1, w_var[i], z_var[i], rate))
+
 
 
 if __name__ == '__main__':

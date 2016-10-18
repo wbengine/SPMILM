@@ -16,7 +16,8 @@
 
 #ifndef _MLtrain
 
-#include "hrf-sa-train.h"
+//#include "hrf-sa-train.h"
+#include "hrf-sams.h"
 using namespace hrf;
 
 char *cfg_pathVocab = NULL;
@@ -46,8 +47,8 @@ float cfg_fMomentum = 0;
 float cfg_var_gap = 1e-4;
 float cfg_dir_gap = 1;
 float cfg_zeta_gap = 10;
-bool cfg_bUnupdateLambda = false;
-bool cfg_bUnupdateZeta = false;
+bool cfg_bUpdateLambda = false;
+bool cfg_bUpdateZeta = false;
 int cfg_nAvgBeg = 0;
 
 float cfg_fRegL2 = 0;
@@ -89,8 +90,8 @@ _wbMain
 	opt.Add(wbOPT_STRING, "gamma-zeta", &cfg_gamma_zeta, "learning rate of zeta");
 	opt.Add(wbOPT_STRING, "gamma-var", &cfg_gamma_var, "learning rate of variance");
 	opt.Add(wbOPT_FLOAT, "momentum", &cfg_fMomentum, "the momentum");
-	opt.Add(wbOPT_TRUE, "not-update-lambda", &cfg_bUnupdateLambda, "don't update lambda");
-	opt.Add(wbOPT_TRUE, "not-update-zeta", &cfg_bUnupdateZeta, "don't update zeta");
+	opt.Add(wbOPT_TRUE, "update-lambda", &cfg_bUpdateLambda, "update lambda");
+	opt.Add(wbOPT_TRUE, "update-zeta", &cfg_bUpdateZeta, "update zeta");
 	opt.Add(wbOPT_INT, "tavg", &cfg_nAvgBeg, ">0 then apply averaging");
 	opt.Add(wbOPT_FLOAT, "vgap", &cfg_var_gap, "the threshold of variance");
 	opt.Add(wbOPT_FLOAT, "dgap", &cfg_dir_gap, "the threshold for parameter update");
@@ -101,8 +102,8 @@ _wbMain
 	opt.Add(wbOPT_TRUE, "zero-init", &cfg_bZeroInit, "Set the init parameters Zero. Otherwise random init the parameters");
 	opt.Add(wbOPT_INT, "print-per-iter", &cfg_nPrintPerIter, "print the LL per iterations");
 	opt.Add(wbOPT_TRUE, "not-print-train", &cfg_bUnprintTrain, "donot print LL on training set");
-	opt.Add(wbOPT_TRUE, "not-print-valid", &cfg_bUnprintTrain, "donot print LL on valid set");
-	opt.Add(wbOPT_TRUE, "not-print-test", &cfg_bUnprintTrain, "donot print LL on test set");
+	opt.Add(wbOPT_TRUE, "not-print-valid", &cfg_bUnprintValid, "donot print LL on valid set");
+	opt.Add(wbOPT_TRUE, "not-print-test", &cfg_bUnprintTest, "donot print LL on test set");
 	opt.Add(wbOPT_STRING, "write-at-iter", &cfg_strWriteAtIter, "write the LL per iteration, such as [1:100:1000]");
 
 	opt.Add(wbOPT_STRING, "write-mean", &cfg_pathWriteMean, "write the expecataion on training set");
@@ -137,88 +138,48 @@ _wbMain
 	trf::CorpusTxt *pValid = (cfg_pathValid) ? new trf::CorpusTxt(cfg_pathValid) : NULL;
 	trf::CorpusTxt *pTest = (cfg_pathTest) ? new trf::CorpusTxt(cfg_pathTest) : NULL;
 
-	SAfunc func;
-	func.m_fdbg.Open(String(cfg_pathModelWrite).FileName() + ".sadbg", "wt");
-	func.m_feat_mean.Open(cfg_pathWriteMean, "wt");
-	func.m_feat_var.Open(cfg_pathWriteVar, "wt");
-//  	func.m_fparm.Open(String(cfg_pathModelWrite).FileName() + ".parm", "wt");
-  	func.m_fgrad.Open(String(cfg_pathModelWrite).FileName() + ".grad", "wt");
- 	func.m_fexp.Open(String(cfg_pathModelWrite).FileName() + ".expt", "wt");
-//   	func.m_fsamp.Open(String(cfg_pathModelWrite).FileName() + ".samp", "wt");
-//   	func.m_ftrain.Open(String(cfg_pathModelWrite).FileName() + ".train", "wt");
-	func.m_fvar.Open(String(cfg_pathModelWrite).FileName() + ".var", "wt");
-	func.m_pathOutputModel = cfg_pathModelWrite;
-//	func.m_fRegL2 = cfg_fRegL2;
-	func.Reset(&m, pTrain, pValid, pTest, cfg_nMiniBatch);
-#ifdef _Var
-	func.m_var_gap = cfg_var_gap;
-#endif
-	func.m_bPrintTrain = !cfg_bUnprintTrain;
-	func.m_bPrintValie = !cfg_bUnprintValid;
-	func.m_bPrintTest = !cfg_bUnprintTest;
-	func.PrintInfo();
 
-	/* create iterator */
-	SAtrain solve(&func);
-	solve.m_nIterMax = cfg_nIterTotalNum; // fix the iteration number
-	solve.m_gain_lambda.Reset(cfg_gamma_lambda, cfg_t0);
-	solve.m_gain_hidden.Reset(cfg_gamma_hidden, cfg_t0);
-	solve.m_gain_zeta.Reset(cfg_gamma_zeta, cfg_t0);
-	solve.m_bUpdate_lambda = !cfg_bUnupdateLambda;
-	solve.m_bUpdate_zeta = !cfg_bUnupdateZeta;
-	solve.m_fMomentum = cfg_fMomentum;
-	solve.m_nAvgBeg = cfg_nAvgBeg;
-	solve.m_nPrintPerIter = cfg_nPrintPerIter;
-	solve.m_dir_gap = cfg_dir_gap;
-	solve.m_zeta_gap = cfg_zeta_gap;
-	VecUnfold(cfg_strWriteAtIter, solve.m_aWriteAtIter);
+	Train *pFunc;
+	if (cfg_bUpdateZeta) {
+		pFunc = new SAMSZeta;
+	}
+	else if (cfg_bUpdateLambda) {
+		pFunc = new SALambda;
+	}
+
+	pFunc->OpenTempFile(cfg_pathModelWrite);
+	pFunc->Reset(&m, pTrain, pValid, pTest);
+	pFunc->m_nMinibatch = cfg_nMiniBatch;
+	pFunc->m_nAvgBeg = cfg_nAvgBeg;
+	pFunc->m_fRegL2 = cfg_fRegL2;
+	pFunc->m_aPrint[0] = !cfg_bUnprintTrain;
+	pFunc->m_aPrint[1] = !cfg_bUnprintValid;
+	pFunc->m_aPrint[2] = !cfg_bUnprintTest;
+	pFunc->m_nPrintPerIter = cfg_nPrintPerIter;
+	VecUnfold(cfg_strWriteAtIter, pFunc->m_aWriteAtIter);
+	pFunc->m_nIterMax = cfg_nIterTotalNum; // fix the iteration number
+
+	if (cfg_bUpdateZeta) {
+		SAMSZeta *p = (SAMSZeta*)pFunc;
+		p->m_zeta_rate.Reset(cfg_gamma_zeta, cfg_t0);
+		p->m_zeta_gap = cfg_zeta_gap;
+	}
+	else if (cfg_bUpdateLambda) {
+		SALambda *p = (SALambda*)pFunc;
+		p->m_feat_rate.Reset(cfg_gamma_lambda, cfg_t0);
+		p->m_hidden_rate.Reset(cfg_gamma_hidden, cfg_t0);
+		p->m_dir_gap = cfg_dir_gap;
 #ifdef _Var
-	//solve.m_var_threshold = cfg_var_gap;
-	solve.m_gain_var.Reset(cfg_gamma_var, cfg_t0);
+		p->m_var_rate.Reset(cfg_gamma_var, cfg_t0);
+		p->m_var_gap = cfg_var_gap;
 #endif
-	solve.PrintInfo();
+	}
 
 	/* set initial values */
-	bool bInitWeight = (!cfg_pathModelRead) || (cfg_bInitValue && !cfg_bUnupdateLambda);
-	bool bInitZeta = (!cfg_pathModelRead) || (cfg_bInitValue && !cfg_bUnupdateZeta);
-
-	Vec<double> vInitParams(func.GetParamNum());
-	/// if the model are inputed, then using the input parameters
-	if (cfg_pathModelRead) {
-		func.GetParam(vInitParams.GetBuf());
-	}
-	if (bInitWeight)  {
-		if (!cfg_bZeroInit) {/* random init the parameters */
-			vInitParams.Fill(0);
-			lout << "[Init Parameters] Random [-0.1, 0.1]" << endl;
-			for (int i = m.m_pFeat->GetNum(); i < m.GetParamNum(); i++)
-				vInitParams[i] = 0.2 * rand() / RAND_MAX - 0.1; // [-0.1, 0.1]
-		}
-		else {
-			lout << "[Init Parameters] Zero" << endl;
-			vInitParams.Fill(0);
-		}
-
-#ifdef _Var
-		int nVarNum = (func.GetParamNum() - func.GetWeightNum() - func.GetZetaNum()) / 2;
-		double *pExp = vInitParams.GetBuf() + func.GetWeightNum() + func.GetZetaNum();
-		double *pExp2 = pExp + nVarNum;
-		for (int i = 0; i < nVarNum; i++) {
-			pExp[i] = 0;
-			pExp2[i] = 1;
-		}
-#endif
-	}
-	if (bInitZeta) {
-		for (int i = 0; i <= m.GetMaxLen(); i++) {
-			vInitParams[m.GetParamNum() + i] = max(0, i - 1) * (log(m.m_pVocab->GetSize()) + m.m_hlayer*m.m_hnode*log(2)); // set zeta
-		}
-	}
-
-	solve.Run(vInitParams.GetBuf());
+	bool bInit = (!cfg_pathModelRead) || cfg_bInitValue;
+	pFunc->Run(bInit);
 
 	// Finish
-	func.SetParam(solve.m_pdRoot);
 	m.WriteT(cfg_pathModelWrite);
 
 	SAFE_DELETE(pTrain);

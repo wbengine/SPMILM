@@ -34,7 +34,6 @@ namespace hrf
 		~ThreadData();
 		void Create(int maxlen, Model *pModel);
 	};
-
 	
 	/*
 	 * \class
@@ -44,7 +43,7 @@ namespace hrf
 	{
 		friend class SAtrain;
 	protected:
-		int m_nMiniBatchSample;  ///< mini-batch for samples
+		int m_nMiniBatchSample;   ///< mini-batch for samples
 		int m_nMiniBatchTraining; ///< mini-batch for training set
 		trf::CorpusRandSelect m_TrainSelect; ///< random select the sequence from corpus
 		CorpusCache m_TrainCache; ///< cache all the h of training sequences.
@@ -92,6 +91,7 @@ namespace hrf
 		int m_nSampleHiddenSampleTimes; ///< the sample times for the hidden of samples
 		int m_nCDSampleTimes; ///< the CD-n: the sample number.
 		int m_nSASampleTimes; ///< the SA sample times
+		bool m_bSAMSSample; ///< if using the sams sampling method
 		
 	public:
 		File m_fdbg;  ///< output the sample pi/zete information
@@ -116,6 +116,8 @@ namespace hrf
 			m_bPrintTrain = true;
 			m_bPrintValie = true;
 			m_bPrintTest = true;
+
+			m_bSAMSSample = false;
 		};
 		SAfunc(Model *pModel, CorpusBase *pTrain, CorpusBase *pValid = NULL, CorpusBase *pTest = NULL, int nMinibatch = 100 )
 		{
@@ -126,6 +128,8 @@ namespace hrf
 			m_bPrintTrain = true;
 			m_bPrintValie = true;
 			m_bPrintTest = true;
+
+			m_bSAMSSample = false;
 		}
 		~SAfunc()
 		{
@@ -154,7 +158,7 @@ namespace hrf
 		/// get the HH mat number
 		int GetHHmatSize() const { return m_pModel->m_m3dHH.GetSize(); }
 		/// get the bias mat number
-		int GetBiasSize() const { return m_pModel->m_matBias.GetSize(); }
+//		int GetBiasSize() const { return m_pModel->m_matBias.GetSize(); }
 		/// get the nunber of all the weight up the exp
 		int GetWeightNum() const { return m_pModel->GetParamNum(); }
 		/// get the zeta parameter number

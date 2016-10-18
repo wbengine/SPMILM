@@ -96,6 +96,7 @@ namespace hrf
 #ifdef _Var
 		lout << "  "; lout_variable(m_var_gap);
 #endif
+		lout << "  "; lout_variable(m_bSAMSSample);
 		lout << "  [AISConfig for Z]  nChain=" << m_AISConfigForZ.nChain << " nIter=" << m_AISConfigForZ.nInter << endl;
 		lout << "  [AISConfig for LL] nChain=" << m_AISConfigForP.nChain << " nIter=" << m_AISConfigForP.nInter << endl;
 		lout << "[SAfunc] *** [End] ***" << endl;
@@ -823,20 +824,14 @@ namespace hrf
 #ifdef _CD
 		PerfromCD(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
 #else
-		//PerfromSA(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
 
-		/* get empirical expectation */
-		int nTrainLen = GetEmpiricalExp(m_vEmpExp, m_vEmpExp2);
- 		
- 		/* get theoretical expectation */
-		//Vec<double> vTempSampleExp(nWeightNum); 
-		// don't use the sample expectation generated here.
-		// only use the length distribution
-		int nSampLen = GetSampleExp(m_vSampleExp, m_vSampleLen);
-
-		
-
-//		PerfromSAMS(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
+		if (m_bSAMSSample) {
+			//GetEmpiricalExp(m_vEmpExp, m_vEmpExp2);
+			GetSampleExp(m_vSampleExp, m_vSampleLen);
+		}
+		else {
+			PerfromSA(m_vEmpExp, m_vSampleExp, m_vEmpExp2, m_vSampleLen);
+		}
 #endif
 
 		/* Calculate the gradient */
@@ -870,9 +865,6 @@ namespace hrf
 // 				pdGradient[i] = 0;
 // 			}
 // 		}
-		for (int i = 0; i < nFeatNum; i++) {
-			pdGradient[i] = 0;
-		}
 		
 		
 

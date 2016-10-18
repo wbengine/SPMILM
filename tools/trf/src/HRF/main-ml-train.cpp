@@ -79,14 +79,14 @@ _wbMain
 
 	
 	/* Exam Model */
-// 	ModelExam exam(&m);
-// 	exam.SetValueRand();
-// 	//exam.SetValueAll(0);
-// 	//exam.TestNormalization(2);
-// 	//exam.TestExpectation(2);
-// 	//exam.TestHiddenExp(2);
-// 	exam.TestSample();
-// 	return 1;
+	ModelExam exam(&m);
+	exam.SetValueRand();
+	//exam.SetValueAll(0);
+	exam.TestNormalization(2);
+	exam.TestExpectation(2);
+	exam.TestHiddenExp(2);
+	exam.TestSample();
+	return 1;
 
 
 	trf::CorpusTxt *pTrain = (cfg_pathTrain) ? new trf::CorpusTxt(cfg_pathTrain) : NULL;

@@ -48,7 +48,7 @@ namespace hrf
 
 	public:
 		Seq() : m_nLen(0),m_hnode(0),m_hlayer(0) {};
-		Seq(int len, int hlayer, int hnode) { Reset(len, hlayer, hnode); }
+		Seq(int len, int hlayer, int hnode) : m_nLen(0), m_hnode(0), m_hlayer(0) { Reset(len, hlayer, hnode); }
 		Seq(Seq &seq) { Copy(seq); }
 		void SetLen(int len) { m_nLen = len; }
 		int GetLen() const { return m_nLen; }
@@ -284,6 +284,12 @@ namespace hrf
 		PValue SumHHWeight(Mat3dShell<PValue> m, VecShell<HValue> h1, VecShell<HValue> h2);
 		PValue SumVHWeight(MatShell<PValue> m, VecShell<HValue> h, int layer);
 		PValue SumHHWeight(Mat3dShell<PValue> m, VecShell<HValue> h1, VecShell<HValue> h2, int layer);
+
+	public:
+		/// perform the SAMS to estimate the normalization constants zeta
+		void PerformSAMS(int nMinibatch, int tmax, int t0, int beta, double zgap = 10);
+		/// perform AIS to esitmate the mariginal probabilities
+		LogP GetLogProb_AIS(VecShell<VocabID> &x, int nChain = 10, int nIntermediate = 10000);
 	};
 
 
