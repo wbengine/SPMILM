@@ -82,7 +82,7 @@ def main():
               '\"python run.py -wer\" compute WER'
               )
 
-    run_times = range(0, 4)   # for multiple run
+    run_times = range(0, 1)   # for multiple run
 
     
     bindir = '../../tools/trf/bin/'
@@ -98,7 +98,7 @@ def main():
     thread = 18
 
     ais_chain = 10
-    ais_inter = 20000
+    ais_inter = 200000
 
     if '-wer' in sys.argv:
         res_list = []

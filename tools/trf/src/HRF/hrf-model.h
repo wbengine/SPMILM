@@ -290,6 +290,8 @@ namespace hrf
 		void PerformSAMS(int nMinibatch, int tmax, int t0, int beta, double zgap = 10);
 		/// perform AIS to esitmate the mariginal probabilities
 		LogP GetLogProb_AIS(VecShell<VocabID> &x, int nChain = 10, int nIntermediate = 10000);
+		/// sample the best hidden and calculate the joint probability.
+		LogP GetLogProb_Gibbs(VecShell<VocabID> &x, int num = 100);
 	};
 
 

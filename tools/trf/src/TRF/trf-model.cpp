@@ -638,6 +638,7 @@ namespace trf
 
 		/* set the P_n */
 		/* Set all the unigram values */
+		lout << "AISNorm: Using all the unigram." << endl;
 		vParamsPn.Fill(0);
 		Seq seq(10);
 		seq.x.Fill(0);

@@ -1467,6 +1467,23 @@ namespace hrf
 		return logprob + logpx;
 	}
 
+	LogP Model::GetLogProb_Gibbs(VecShell<VocabID> &x, int num /* = 100 */)
+	{
+		int nLen = x.GetSize();
+		Seq seq(nLen, m_hlayer, m_hnode);
+		seq.x.Set(x.GetBuf(), x.GetSize(), m_pVocab);
+		RandHidden(seq);
+
+		LogP maxLogp = trf::LogP_zero;
+		for (int i = 0; i < num; i++) {
+			SampleHAndCGivenX(seq);
+			LogP curlogp = GetLogProb(seq, true);
+			if (curlogp > maxLogp) {
+				maxLogp = curlogp;
+			}
+		}
+		return maxLogp;
+	}
 
 	/************************************************************************/
 	/* Forward-backward class                                               */

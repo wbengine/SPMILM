@@ -64,6 +64,8 @@ char *cfg_strWriteAtIter = NULL;
 char *cfg_pathWriteMean = NULL;
 char *cfg_pathWriteVar = NULL;
 
+AISConfig cfg_AIS_for_LL;
+
 Option opt;
 
 _wbMain
@@ -108,6 +110,9 @@ _wbMain
 
 	opt.Add(wbOPT_STRING, "write-mean", &cfg_pathWriteMean, "write the expecataion on training set");
 	opt.Add(wbOPT_STRING, "write-var", &cfg_pathWriteVar, "write the variance on training set");
+
+	opt.Add(wbOPT_INT, "AIS-chain", &cfg_AIS_for_LL.nChain, "AIS chain number");
+	opt.Add(wbOPT_INT, "AIS-inter", &cfg_AIS_for_LL.nInter, "AIS intermediate distribution number");
 
 	opt.Parse(_argc, _argv);
 
@@ -158,6 +163,8 @@ _wbMain
 	pFunc->m_nPrintPerIter = cfg_nPrintPerIter;
 	VecUnfold(cfg_strWriteAtIter, pFunc->m_aWriteAtIter);
 	pFunc->m_nIterMax = cfg_nIterTotalNum; // fix the iteration number
+	pFunc->m_AISConfigForP = cfg_AIS_for_LL;
+	pFunc->m_AISConfigForZ = cfg_AIS_for_LL;
 
 	if (cfg_bUpdateZeta) {
 		SAMSZeta *p = (SAMSZeta*)pFunc;
