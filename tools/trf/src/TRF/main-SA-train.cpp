@@ -47,6 +47,7 @@ int cfg_nAvgBeg = 0;
 
 float cfg_fRegL2 = 0;
 float cfg_dGap = 1.0f;
+float cfg_vGap = 1e-5;
 
 bool cfg_bInitValue = false;
 int cfg_nPrintPerIter = 1;
@@ -81,6 +82,7 @@ _wbMain
 	opt.Add(wbOPT_INT, "tavg", &cfg_nAvgBeg, ">0 then apply averaging");
 	opt.Add(wbOPT_FLOAT, "L2", &cfg_fRegL2, "regularization L2");
 	opt.Add(wbOPT_FLOAT, "dgap", &cfg_dGap, "the gap for update value at each iteration");
+	opt.Add(wbOPT_FALSE, "vgap", &cfg_vGap, "the gap for empirical variance");
 
 	opt.Add(wbOPT_TRUE, "init", &cfg_bInitValue, "Re-init the parameters");
 	opt.Add(wbOPT_INT, "print-per-iter", &cfg_nPrintPerIter, "print the LL per iterations");
@@ -127,6 +129,7 @@ _wbMain
 	func.m_pathOutputModel = cfg_pathModelWrite;
 	func.Reset(&m, pTrain, pValid, pTest, cfg_nMiniBatch);
 	func.m_fRegL2 = cfg_fRegL2;
+	func.m_var_gap = cfg_vGap;
 	func.PrintInfo();
 
 

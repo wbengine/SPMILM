@@ -274,7 +274,7 @@ namespace trf
 		if (nZero > 0) {
 			lout_warning("[EmpiricalVar] Exist zero expectation  (zero-num=" << nZero << ")");
 		}
-		lout << "[EmpiricalVar] the number of ( var < gap ) is " << nDownGap << endl;
+		lout << "[EmpiricalVar] the number of ( var < gap=" << m_var_gap << " ) is " << nDownGap << endl;
 		lout << "[EmpiricalVar] min variance value (over 0) is " << dMinVarOverZero << endl;
 
 

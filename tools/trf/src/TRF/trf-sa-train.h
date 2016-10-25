@@ -85,10 +85,10 @@ namespace trf
 		Mat<double> m_matSampleLen; ///< the length count of sample of each thread
 
 		Vec<double> m_vEmpiricalVar; ///< empirical variance 
-		double m_var_gap; ///< a varicance gap used in gradient sacling
-
+		
 	public:
 		double m_fRegL2; ///< l2 regularization
+		double m_var_gap; ///< a varicance gap used in gradient sacling
 
 		AISConfig m_AISConfigForZ; ///< the AIS configuration for normalization
 		AISConfig m_AISConfigForP; ///< the AIS configuration for calculating the LL.
