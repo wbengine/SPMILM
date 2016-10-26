@@ -127,7 +127,7 @@ def main():
 
             # run asi to calculate the normalization constnts of models
             ais_model = '{}.ais{}_{}'.format(write_model, ais_chain, ais_inter)
-            if not os.path.exists(ais_model):
+            if not os.path.exists(ais_model + '.model'):
                 config = ' -vocab {0} -read {1}.model -write {2}.model -log {2}.log'.format(vocab, write_model, ais_model)
                 config += ' -norm-method AIS -AIS-chain {} -AIS-inter {} -thread {} '.format(ais_chain, ais_inter, thread)
                 config += ' -norm-len-max {} '.format(trf.FileMaxLen(read_nbest)-1)  # just compute the needed length
@@ -181,7 +181,18 @@ def main():
         for i in range(len(w_var)):
             rate = np.exp(w_var[i] - z_var[i])
             print('len={} w_var={} z_var={} rate={}'.format(i+1, w_var[i], z_var[i], rate))
-
+    if '-cmp2' in sys.argv:
+        # compare the logz of AIS and the SAMS
+        write_model = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0'
+        logz_sams = trf.LoadLogz(write_model + '.model')
+        logz_ais = trf.LoadLogz('{}.ais{}_{}.model'.format(write_model, ais_chain, ais_inter))
+        logz_ais1 = trf.LoadLogz('{}.ais10_20000.run0.model'.format(write_model))
+        plt.figure()
+        plt.plot(logz_sams[0:33], 'r-', label='sams')
+        plt.plot(logz_ais1[0:33], 'g--', label='ais 10-20K')
+        plt.plot(logz_ais[0:33], 'b--', label='ais 10-200K')
+        plt.legend()
+        plt.show()
 
 
 if __name__ == '__main__':

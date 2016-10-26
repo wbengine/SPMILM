@@ -199,7 +199,7 @@ class model:
                 b = lineb.split()
                 fw.write('{}\t{}\tclass={}\n'.format(a[0], a[1], b[2]))
 
-    def prepare(self, train, valid, test, class_num):
+    def prepare(self, train, valid, test, class_num = -1):
         write_vocab = self.workdir + 'vocab.list'
         write_vocab_c = self.workdir + 'vocab_c{}.list'.format(class_num)
         write_train = self.workdir + 'train.id'
@@ -216,8 +216,10 @@ class model:
         CorpusToID(valid, write_valid, v)
         CorpusToID(test, write_test, v)
 
-        # get class
-        self.WordCluster(write_vocab, write_train, class_num, write_vocab_c)
+        if class_num > 0:
+            # get class
+            self.WordCluster(write_vocab, write_train, class_num, write_vocab_c)
+
 
     def train(self, config):
         cmd = self.bindir + 'trf-satrain ' + config
