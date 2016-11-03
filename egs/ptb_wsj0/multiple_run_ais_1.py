@@ -75,6 +75,40 @@ def mat_var(mat):
     return var
 
 
+def load_ais_weight(logfile):
+    logw = []
+    with open(logfile) as f:
+        for line in f:
+            if line.find('logz') == 0:
+                a = line.split()
+                cur_logw = [float(i) for i in a[4:]]
+                logw.append(cur_logw)
+    return logw
+
+
+def revise_logz(read_trf, write_trf, logz):
+    with open(read_trf) as f1, open(write_trf, 'wt') as f2:
+        nline = 0
+        for line in f1:
+            nline+=1
+            if nline == 4:
+                a = line.split()
+                print(a)
+                for i in range(len(logz)):
+                    a[i+1] = '{}'.format(logz[i])
+                print(a)
+                f2.write(' '.join(a) + '\n')
+            elif nline == 5:
+                a = line.split()
+                print(a)
+                for i in range(len(logz)):
+                    a[i+1] = '{}'.format(logz[i] - logz[0])
+                print(a)
+                f2.write(' '.join(a) + '\n')
+            else:
+                f2.write(line)
+
+
 def main():
     if len(sys.argv) == 1:
         print('\"python run.py -train\" train LSTM\n',
@@ -101,6 +135,7 @@ def main():
     ais_inter = 200000
 
     if '-wer' in sys.argv:
+        # calculate mean of the WER of 10 TRFs after AIS
         res_list = []
         for runnum in run_times:
             name = 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run{}.ais{}_{}'.format(runnum, ais_chain, ais_inter)
@@ -186,13 +221,88 @@ def main():
         write_model = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0'
         logz_sams = trf.LoadLogz(write_model + '.model')
         logz_ais = trf.LoadLogz('{}.ais{}_{}.model'.format(write_model, ais_chain, ais_inter))
-        logz_ais1 = trf.LoadLogz('{}.ais10_20000.run0.model'.format(write_model))
         plt.figure()
         plt.plot(logz_sams[0:33], 'r-', label='sams')
-        plt.plot(logz_ais1[0:33], 'g--', label='ais 10-20K')
+        logz_ais10 = []
+        for n in range(10):
+            logz_ais10.append( trf.LoadLogz('{}.ais10_20000.run{}.model'.format(write_model, n)) )
+            plt.plot(logz_ais10[-1][0:33], 'g--')
+        logz_ais_m = [0]*33
+        for i in range(33):
+            for n in range(10):
+                logz_ais_m[i] += logz_ais10[n][i]
+            logz_ais_m[i] /= 10
+        plt.plot(logz_ais_m[0:33], 'r--')
         plt.plot(logz_ais[0:33], 'b--', label='ais 10-200K')
+        #plt.legend()
+        plt.show()
+
+    if '-cmp3' in sys.argv:
+        trf_model = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0'
+        # revise the logz of the trf model to the mean of results of 10 (10-20k) runs
+        logz_sams = trf.LoadLogz(trf_model + '.model')
+        logz_ais10 = []
+        for n in range(10):
+            logz_ais10.append( trf.LoadLogz('{}.ais10_20000.run{}.model'.format(trf_model, n)) )
+        logz_ais_m = [0]*33
+        for i in range(33):
+            for n in range(10):
+                logz_ais_m[i] += logz_ais10[n][i]
+            logz_ais_m[i] /= 10
+
+
+        print(logz_ais_m)
+        ais_model = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0.ais10_20000.runavg.model'
+        print('write -> ' + ais_model)
+        revise_logz(trf_model+'.model', ais_model, logz_ais_m)
+
+        # compute WER
+        print('computer WER')
+        wer = model.wer(vocab, ais_model, data()[3], data()[4], data()[5])
+        print('WER={}'.format(wer))
+
+        # compute PPL
+        print('computer PPL')
+        ppl = model.ppl(vocab, ais_model, data()[4], True)
+        print('PPL={}'.format(ppl))
+
+        # plot the logzs
+        plt.figure()
+        for n in range(10):
+            plt.plot(logz_ais10[n][0:33], 'g-')
+        plt.plot(logz_ais_m[0:33], 'r', label='ais10-20K-mean')
+        plt.plot(logz_sams[0:33], 'b', label='sams')
         plt.legend()
         plt.show()
+
+    if '-wer2' in sys.argv:
+        # perform adjust-AIS and  evaluate the WER and PPL
+
+        results = []
+        for n in range(10):
+            ais_name = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run{}.ais10_20000'.format(n)
+            print(ais_name)
+            logw = load_ais_weight(ais_name + '.log')
+            logz = [np.mean(a) for a in logw]
+            revise_logz(ais_name + '.model', ais_name + '.adjust.model', logz)
+            print('  wer')
+            wer = model.wer(vocab, ais_name + '.adjust.model', data()[3], data()[4], data()[5])
+            print('  ppl')
+            [ppl, LL] = model.ppl(vocab, ais_name + '.adjust.model', data()[4], True)
+            fres.Add(os.path.split(ais_name)[-1]+'.ad', ['WER', 'LL-wsj', 'PPL-wsj'], [wer, LL, ppl])
+            results.append([wer, LL, ppl])
+
+        res_mean = []
+        res_std = []
+        for i in range(3):
+            a = [b[i] for b in results]
+            res_mean.append(np.mean(a))
+            res_std.append(np.std(a))
+        fres.Add('trf_c200_g4_w_c_ws_cs_wsh_csh_tied.runavg.ais10_20000.ad',
+                 ['WER', 'LL-wsj', 'PPL-wsj'],
+                 ['{:.2f}+{:.2f}'.format(res_mean[i],res_std[i]) for i in range(3)])
+
+
 
 
 if __name__ == '__main__':

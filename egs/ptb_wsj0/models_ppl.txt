@@ -58,4 +58,15 @@ trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run9.ais10_20000       45.738      115.760   
 trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run3.ais10_20000       43.168      113.549      113.370      7.054      179.094       176.388       8.182      101.549      363.849       
 trf_c200_g4_w_c_ws_cs_wsh_csh_tied.runavg.ais10_20000     44.64+1.48  114.96+1.43  114.67+1.38  7.56+0.51  191.41+12.69  187.56+11.94  8.34+0.23  102.31+1.46  381.67+33.19  
 trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0.ais10_200000      59.351      129.123      128.740      14.671     364.842       355.657       8.780      115.647      824.998       
-trf_c197_g4_w_c_ws_cs_wsh_csh_tied.w2v                    41.106      109.656      109.450      6.425      149.911       147.500       8.463      96.918       278.051       
+trf_c197_g4_w_c_ws_cs_wsh_csh_tied.w2v                    29.278      109.891      109.705      3.762      151.529       149.227       8.238      97.566       288.718       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run0.ais10_20000.ad    0           0            0            0          0             0             7.977      98.880       311.604       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run1.ais10_20000.ad    0           0            0            0          0             0             8.724      105.049      445.852       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run2.ais10_20000.ad    0           0            0            0          0             0             7.902      98.675       307.917       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run3.ais10_20000.ad    0           0            0            0          0             0             7.883      98.700       308.363       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run4.ais10_20000.ad    0           0            0            0          0             0             7.977      98.242       300.272       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run5.ais10_20000.ad    0           0            0            0          0             0             7.977      98.752       309.295       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run6.ais10_20000.ad    0           0            0            0          0             0             7.939      98.410       303.218       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run7.ais10_20000.ad    0           0            0            0          0             0             7.939      98.582       306.274       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run8.ais10_20000.ad    0           0            0            0          0             0             7.996      98.338       301.961       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run9.ais10_20000.ad    0           0            0            0          0             0             7.958      98.704       308.447       
+trf_c200_g4_w_c_ws_cs_wsh_csh_tied.runavg.ais10_20000.ad  0           0            0            0          0             0             8.03+0.23  99.23+1.95   320.32+41.98  
