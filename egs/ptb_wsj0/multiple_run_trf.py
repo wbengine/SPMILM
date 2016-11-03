@@ -44,7 +44,7 @@ def main():
               '\"python run.py -wer\" compute WER'
               )
 
-    run_times = range(4, 10)   # for multiple run
+    run_times = range(0, 10)   # for multiple run
 
     
     bindir = '../../tools/trf/bin/'
@@ -69,19 +69,16 @@ def main():
     reg = 4e-5
     thread = 8
 
-    if '-ppl' in sys.argv:
-        value1 = []
-        value2 = []
-        value_ll = []
-        for runnum in run_times:
-            write_name = 'trf_c{}_{}.run{}'.format(class_num, feat[0:-3], runnum)
-            line = fres.Get(write_name)
-            value1.append(line[9])
-            value2.append(line[6])
-            value_ll.append(line[3])
-        print('ppl-wsj = {} + {}'.format(np.mean(value1), np.std(value1)))
-        print('LL-test = {} + {}'.format(np.mean(value_ll), np.std(value_ll)))
-        print('ppl-test = {} + {}'.format(np.mean(value2), np.std(value2)))
+    if '-res' in sys.argv:
+        fres.Read()
+        for i in range(1,len(fres.head)):
+            value = []
+            for runnum in run_times:
+                write_name = 'trf_c{}_{}.run{}'.format(class_num, feat[0:-3], runnum)
+                line = fres.Get(write_name)
+                value.append(line[i])
+            fres.Add('trf_c{}_{}.runavg'.format(class_num, feat[0:-3]), [fres.head[i]],
+                     ['{:.2f}+{:.2f}'.format(np.mean(value), np.std(value))] )
 
     for runnum in run_times:
         write_model = workdir + 'trf_c{}_{}.run{}'.format(class_num, feat[0:-3], runnum)

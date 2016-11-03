@@ -275,6 +275,78 @@ def main():
         plt.legend()
         plt.show()
 
+    if '-wer3' in sys.argv:
+        # smooth zeta
+        wer_ais = []
+        wer_smooth = []
+        ppl_ais = []
+        ppl_smooth = []
+        ll_ais = []
+        ll_smooth =[]
+        for n in range(10):
+            ais_name = workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run{}.ais10_20000'.format(n)
+            print(ais_name)
+
+
+            logz_ais = trf.LoadLogz(ais_name + '.model')[0:33]
+            z = np.polyfit(np.linspace(1, 33, 33), logz_ais, 1)
+            logz_ais_smooth = z[0]*np.linspace(1,33,33)+z[1]
+            revise_logz(ais_name+'.model', ais_name+'.smooth.model', logz_ais_smooth.tolist())
+            print(logz_ais)
+            print(logz_ais_smooth.tolist())
+
+            if n == 0:
+                logz_sams = trf.LoadLogz(workdir + 'trf_c200_g4_w_c_ws_cs_wsh_csh_tied.run{}.model'.format(n))
+                logw = load_ais_weight(ais_name + '.log')
+                plt.figure()
+                for i in range(len(logw)):
+                    plt.plot((i+1)*np.ones(len(logw[i])), logw[i], 'k.')
+                plt.plot(np.linspace(1,33,33), logz_ais, 'r-', label='standard AIS')
+                plt.plot(np.linspace(1,33,33), logz_ais_smooth, 'g-', label='smoothed AIS')
+                plt.plot(np.linspace(1,33,33), logz_sams[0:33], 'b-', label='SAMS')
+                plt.legend()
+                plt.xlim(1,33)
+                plt.xlabel('length')
+                plt.ylabel('logZ')
+                plt.show()
+
+
+
+            wer = model.wer(vocab, ais_name+'.model', data()[3], data()[4], data()[5])
+            [ppl, LL] = model.ppl(vocab, ais_name + '.model', data()[4], True)
+            wer_ais.append(wer)
+            ppl_ais.append(ppl)
+            ll_ais.append(LL)
+
+            fres.Add(os.path.split(ais_name)[-1],
+                     ['WER', 'LL-wsj', 'PPL-wsj'], [wer, LL, ppl])
+
+            wer = model.wer(vocab, ais_name+'.smooth.model', data()[3], data()[4], data()[5])
+            [ppl, LL] = model.ppl(vocab, ais_name + '.smooth.model', data()[4], True)
+            wer_smooth.append(wer)
+            ppl_smooth.append(ppl)
+            ll_smooth.append(LL)
+
+            fres.Add(os.path.split(ais_name)[-1] + '.smooth',
+                     ['WER', 'LL-wsj', 'PPL-wsj'], [wer, LL, ppl])
+
+
+
+
+
+        for label,d in zip(['WER', 'LL-wsj', 'PPL-wsj'], [wer_ais, ll_ais, ppl_ais]):
+            cur_mean = np.mean(d)
+            cur_std = np.std(d)
+            fres.Add('trf_c200_g4_w_c_ws_cs_wsh_csh_tied.runavg.ais10_20000',
+                     [label], ['{:.2f}+{:.2f}'.format(cur_mean, cur_std)])
+
+        for label,d in zip(['WER', 'LL-wsj', 'PPL-wsj'], [wer_smooth, ll_smooth, ppl_smooth]):
+            cur_mean = np.mean(d)
+            cur_std = np.std(d)
+            fres.Add('trf_c200_g4_w_c_ws_cs_wsh_csh_tied.runavg.ais10_20000.smooth',
+                     [label], ['{:.2f}+{:.2f}'.format(cur_mean, cur_std)])
+
+
     if '-wer2' in sys.argv:
         # perform adjust-AIS and  evaluate the WER and PPL
 

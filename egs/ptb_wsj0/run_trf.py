@@ -79,7 +79,7 @@ def main():
         config += ' -thread {} '.format(thread)
         config += ' -print-per-iter 10 '
         config += ' -write-at-iter [{}:1000:{}]'.format(tmax-5000, tmax)  # output the intermediate models
-        model.prepare(data()[0], data()[1], data()[2], class_num)
+        model.prepare(data()[0], data()[1], data()[2], class_num, thread_num=thread)
         model.train(config)
     if '-plot' in sys.argv:
         fres = wb.FRes('models_ppl.txt')
