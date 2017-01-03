@@ -18,7 +18,7 @@ The LM in this toolkits includes:
 3. LSTM: the Long Short-Term Memory nerual network language models. 
   * The source codes are released by Wojciech Zaremba at https://github.com/wojzaremba/lstm. We extand the code to make it easy to nbest rescoring. We evaulate LSTM in several datasets including PTM and WSJ0. 
   * Please install Torch http://torch.ch/ before using this LSTM toolkits.
-4. TRF: the trans-dimensional random fields models, see http://oa.ee.tsinghua.edu.cn/~ouzhijian/software/TRF-html/index.html for document.
+4. TRF: the trans-dimensional random fields models, see http://oa.ee.tsinghua.edu.cn/~ouzhijian/software/TRF-html/index.html
   * TRF LMs are a new kind of whole-sentence LMs which have the potential to integrate a richer set of features. 
   * Several experiments have shown that interpplating TRF with LSTM achieves the new state-of-the-art WER on speech recognition tasks.
   * See ''Trans-dimensional random fields for language modeling, ACL2015'' for TRF details
