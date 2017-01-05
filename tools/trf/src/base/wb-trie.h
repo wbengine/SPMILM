@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -41,8 +41,11 @@ namespace wb
 	template <class KeyT, class DataT> class TrieIter;
 	template <class KeyT, class DataT> class TrieIter2;
 
+    /** \addtogroup struct
+    @{
+    */
 
-	/** 
+	/**
 	 * \brief trie structure
 	 *
 	 Trie��ʹ����һ����Ҫע������⣺
@@ -66,7 +69,7 @@ namespace wb
 		friend class TrieIter<KeyT, DataT>;
 		friend class TrieIter2<KeyT, DataT>;
 	private:
-		DataT m_value; ///< the value 
+		DataT m_value; ///< the value
 		_wb_LHASH_FOR_TRIE *m_phash; ///< the hash containing the pointer to the sub-trie
 	public:
 		Trie() :m_phash(NULL){ Map_noKey(m_value); }
@@ -83,7 +86,7 @@ namespace wb
 					(*ppsub)->Release();
 				}
 			}
-			
+
 			Map_noKey(m_value);
 			if (m_phash) {
 				delete m_phash;
@@ -153,7 +156,7 @@ namespace wb
 				bFound = false;
 				return NULL;
 			}
-			
+
 			_wb_TRIE **ppsub = m_phash->Find(p_pIndex[0], bFound);
 			if (!bFound || !ppsub) {
 				bFound = false;
@@ -179,13 +182,13 @@ namespace wb
 			return (*ppsub)->InsertTrie(p_pIndex + 1, nIndexLen - 1, bFound);
 		}
 		/// Find a value
-		DataT* Find(const KeyT *p_pIndex, int nIndexLen) 
+		DataT* Find(const KeyT *p_pIndex, int nIndexLen)
 		{
 			bool bFound;
 			return Find(p_pIndex, nIndexLen, bFound);
 		}
 		/// Insert a value
-		DataT* Insert(const KeyT *p_pIndex, int nIndexLen) 
+		DataT* Insert(const KeyT *p_pIndex, int nIndexLen)
 		{
 			bool bFound;
 			return Insert(p_pIndex, nIndexLen, bFound);
@@ -301,6 +304,7 @@ namespace wb
 		int m_nLevel; ///< the index length
 		bool(*m_sort)(KeyT, KeyT); ///< sort function
 	};
+	/** @} */
 
 }
 

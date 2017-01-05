@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -21,6 +21,10 @@
 
 namespace wb
 {
+    /** \addtogroup struct
+    @{
+    */
+
 	namespace iter
 	{
 		template <typename T>
@@ -42,8 +46,8 @@ namespace wb
 		public:
 			Line(T b, T e, T s) :beg(b), end(e), step(s), cur(b) {}
 			virtual void Reset() { cur = beg; }
-			virtual bool Next(T &t) 
-			{ 
+			virtual bool Next(T &t)
+			{
 				if ((cur-end>0) == (step>0))
 					return false;
 				t = cur;
@@ -61,7 +65,7 @@ namespace wb
 		public:
 			Ary(T *p_p, int p_len) :p(p_p), len(p_len), cur(0) {}
 			virtual void Reset() { cur = 0; }
-			virtual bool Next(T &t) 
+			virtual bool Next(T &t)
 			{
 				if (cur >= len)
 					return false;
@@ -71,7 +75,7 @@ namespace wb
 			}
 		};
 	}
-	
+
 
 	template <typename T>
 	class vIter
@@ -91,7 +95,7 @@ namespace wb
 			}
 			m_nCur = 0;
 		}
-		bool Next() 
+		bool Next()
 		{
 			m_nCur++;
 			if (m_nCur == 1) {
@@ -111,7 +115,7 @@ namespace wb
 					return false;
 				}
 			}
-			
+
 			return true;
 		}
 		void AddLine(T beg, T end, T step = 1) {
@@ -131,6 +135,7 @@ namespace wb
 			Reset();
 		}
 	};
+	/** @} */
 }
 
 #endif

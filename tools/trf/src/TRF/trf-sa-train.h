@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -22,6 +22,13 @@
 
 namespace trf
 {
+    /**
+    @defgroup train SA Training
+    Define the classes that carry out the SA-training progress. \n
+    During each iteration, sample miniBatchSample times and calculate the expectation in respect to the distribution. \n
+    Update the parameters using the gradient: p_emp[f]-p_distri[f]
+    @{
+    */
 	class SAfunc;
 	class SAtrain;
 
@@ -51,7 +58,7 @@ namespace trf
 		void Create(int maxlen, Model *pModel);
 	};
 
-	
+
 	/*
 	 * \class
 	 * \brief augment SA training algorithms
@@ -61,7 +68,7 @@ namespace trf
 		friend class SAtrain;
 	protected:
 		int m_nMiniBatchSample;  ///< mini-batch for samples
-		
+
 		Vec<Prob> m_samplePi; ///< the length distribution used for sample
 
 		Vec<double> m_vAllSampleLenCount; ///< the count of each length in all samples
@@ -84,8 +91,8 @@ namespace trf
 		Mat<double> m_matSampleExp2; ///< the sample expectation^2 of each thread
 		Mat<double> m_matSampleLen; ///< the length count of sample of each thread
 
-		Vec<double> m_vEmpiricalVar; ///< empirical variance 
-		
+		Vec<double> m_vEmpiricalVar; ///< empirical variance
+
 	public:
 		double m_fRegL2; ///< l2 regularization
 		double m_var_gap; ///< a varicance gap used in gradient sacling
@@ -94,7 +101,7 @@ namespace trf
 		AISConfig m_AISConfigForP; ///< the AIS configuration for calculating the LL.
 		int m_nCDSampleTimes; ///< the CD-n: the sample number.
 		int m_nSASampleTimes; ///< the SA sample times
-		
+
 	public:
 		File m_fdbg;  ///< output the sample pi/zete information
 		File m_fparm; ///< output the parameters of each iteration
@@ -128,7 +135,7 @@ namespace trf
 			}
 #endif
 		}
-		/// reset 
+		/// reset
 		virtual void Reset(Model *pModel, CorpusBase *pTrain, CorpusBase *pValid = NULL, CorpusBase *pTest = NULL, int nMinibatch = 100);
 		/// print information
 		void PrintInfo();
@@ -256,5 +263,5 @@ namespace trf
 		void PrintInfo();
 	};
 
-	
+	/** @} */
 }

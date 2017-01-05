@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 #ifndef _WB_WORD_CLUSTER_H_
@@ -21,6 +21,10 @@
 
 namespace wb
 {
+    /**
+    @defgroup cluster Word Clustering
+    @{
+    */
 	/**
 	* \class
 	* \brief word聚类
@@ -112,7 +116,7 @@ namespace wb
 		Trie<int, int> m_inv_wgram_count;		///< N(v,w) inverse word bigram count
 
 		LHash<int, int> m_class;			///< index the class
-		Trie<int, int> m_class_gram;		///< (g(w), g(v)) the index of the class ngram 
+		Trie<int, int> m_class_gram;		///< (g(w), g(v)) the index of the class ngram
 		Trie<int, int> m_word_class_gram;	///< (w,g) the word-class ngram
 		Trie<int, int> m_class_word_gram;	///< (g,w) the class-word ngram
 
@@ -178,6 +182,7 @@ namespace wb
 		///使用出现频率进行简单的分类，不需要迭代
 		void SimpleCluster();
 	};
+	/** @} */s
 }
 
 #endif

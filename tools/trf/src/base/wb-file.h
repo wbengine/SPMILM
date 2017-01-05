@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -39,18 +39,18 @@ using namespace std;
 
 /// file open
 #define SAFE_FOPEN(pfile, path, mode) {\
-	if ( !path || !(pfile = fopen(path, mode)) ) {cout<<"File Open Failed: "<<path<<endl; exit(0);}} 
+	if ( !path || !(pfile = fopen(path, mode)) ) {cout<<"File Open Failed: "<<path<<endl; exit(0);}}
 /// file open
 #define SAFE_FMOPEN(file, path, mode) {\
-	file.open(path, mode); if (!file.good()) {cout<<"File Open Failed: "<<path<<endl; exit(0);}} 
+	file.open(path, mode); if (!file.good()) {cout<<"File Open Failed: "<<path<<endl; exit(0);}}
 /// file open
 #define SAFE_FSOPEN(file, path) {\
-	file.open(path); if (!file.good()) {cout<<"File Open Failed: "<<path<<endl; exit(0);}} 
+	file.open(path); if (!file.good()) {cout<<"File Open Failed: "<<path<<endl; exit(0);}}
 /// file close
-#define SAFE_FCLOSE(fp) { if(fp) {fclose(fp); fp=NULL;} } 
+#define SAFE_FCLOSE(fp) { if(fp) {fclose(fp); fp=NULL;} }
 
 /// the maximum length of string read from file once
-#define MAX_SENTENCE_LEN	32*1024 
+#define MAX_SENTENCE_LEN	32*1024
 
 /// Write a value to file
 #define WRITE_VALUE(x,fp) fwrite(&(x),sizeof(x),1,fp)
@@ -63,6 +63,15 @@ using namespace std;
 
 namespace wb
 {
+    /** @defgroup system System Tools
+	 This is the module of tools for system, which includes: \n
+	 command line parameter parsing \n
+	 file management \n
+	 log reading/writing \n
+	 ...
+	 @{
+	 */
+
 	/*!
 	 * \author WangBin
 	 * \date 2016-05-05
@@ -191,6 +200,9 @@ namespace wb
 		bool ReadObjB();
 	};
 
+	/**
+	@}
+	*/
 }
 
 

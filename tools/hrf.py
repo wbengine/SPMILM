@@ -59,6 +59,50 @@ class model:
         cmd = self.bindir + 'hrf-mltrain ' + config
         trf.System(cmd)
 
-    def use(self, config):
+    def use(self, config, bPrint=True):
+        write_log = self.workdir + 'trf_model_use.log'
+        if config.find('-log') == -1:
+             config += ' -log {}'.format(write_log)
+        else:
+            write_log = config[config.find('-log'):].split()[1]
+
         cmd = self.bindir + 'hrf ' + config
-        trf.System(cmd)
+        if bPrint:
+            trf.System(cmd)
+        else:
+            os.popen(cmd).read()  # if not read(), the will return before the process finished (window) !!
+
+        with open(write_log) as f:
+            s = f.read()
+            idx = s.find('-LL = ')
+            if idx != -1:
+                return float(s[idx:].split()[2])
+        return 0
+
+    # calculate the ppl of a txt file
+    def ppl(self, vocab, model, txt, isnbest=False):
+        list_vocab = self.workdir + 'vocab.list'
+        write_id = self.workdir + os.path.split(txt)[-1] + '.pplid'
+        if isnbest:
+            trf.NbestToID(txt, write_id, trf.ReadVocab(list_vocab))
+        else:
+            trf.CorpusToID(txt, write_id, trf.ReadVocab(list_vocab))
+
+        cmd = self.bindir + 'hrf '
+        cmd += ' -vocab {} -read {} -test {}'.format(vocab, model, write_id)
+        s = os.popen(cmd).read()
+        idx = s.find('-LL = ')
+        if idx != -1:
+            LL = float(s[idx:].split()[2])
+            return wb.LL2PPL(-LL, write_id)
+        else:
+            print('[ERROR]!!')
+            print(s)
+
+    def get_last_value(self, log_file):
+        with open(log_file) as f:
+            v = []
+            for line in f:
+                if line.find('ExValues') != -1:
+                    v = [float(i) for i in line[line.find('ExValues'):].split()[1:-1]]
+        return v

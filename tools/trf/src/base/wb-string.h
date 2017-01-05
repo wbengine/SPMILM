@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -38,10 +38,13 @@ namespace wb
 {
 
 	const int cn_default_str_len = 10;  ///< default length of string
-	const int cn_default_max_len = 32 * 1024;  ///< default maximum length 
+	const int cn_default_max_len = 32 * 1024;  ///< default maximum length
 
+	/** \addtogroup struct
+    @{
+    */
 	/// a dynamic string class
-	/*
+	/**
 		A lot of function for string operation, including:
 		- operation "=";
 		- compare operation >/</== and so on
@@ -53,7 +56,7 @@ namespace wb
 		char *m_pBuffer;  ///< string buffer
 		int m_nBufSize;   ///< string buffer size. Note this is not the string length, just the buffer size.
 
-		char *m_tokPtr; /// store the top pointer. used in 
+		char *m_tokPtr; /// store the top pointer. used in
 	public:
 		String(int p_nLen = cn_default_str_len);
 		String(const char *p_str);
@@ -70,7 +73,7 @@ namespace wb
 		/// get buffer
 		char *GetBuffer() const { return m_pBuffer; }
 		/// get the pointer to the last position
-		char *End() const { return m_pBuffer + strlen(m_pBuffer) - 1; } 
+		char *End() const { return m_pBuffer + strlen(m_pBuffer) - 1; }
 		/// get buffer size
 		int GetSize() const { return m_nBufSize; }
 		/// get string length
@@ -138,6 +141,8 @@ namespace wb
 		/// if the string is a path, this function return the file name.
 		String FileName();
 	};
+
+	/** @} */
 }
 
 

@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -20,7 +20,7 @@
 * \author WangBin
 * \date 2016-04-28
 * \brief a definition of a class Log, which can output to the cmd window and the log file simultaneously.
-* \detials  
+* \detials
 * In wb-log.cpp, there are a Log variable "lout", which can be directly used just like "cout". For example:
 *	\code{.cpp}
 *		lout<<"Hello Wrold!"<<endl;
@@ -47,6 +47,9 @@ using namespace std;
 */
 namespace wb
 {
+    /** \addtogroup system
+    @{
+    */
 
 #define wbLog_LevelSpace "\t"
 
@@ -65,7 +68,7 @@ namespace wb
 		long long m_total; ///< the maximum number
 		char m_symbol[3];   ///< the progress bar style. such as "[=]"
 		int m_lastprec; ///< save the last precent, if current precent == lastprecent, then we don't update
-		const int m_barmaxlen = 50; ///< the length of bar 
+		const int m_barmaxlen = 50; ///< the length of bar
 
 		string m_strhead; ///< the string shown in before the bar.
 	public:
@@ -162,7 +165,7 @@ namespace wb
 	};
 
 	extern Log lout; ///< the defination is in wb-log.cpp
-	
+
 	template <typename T>
 	Log &Log::output(T *pArray, int n, const char *pgap/*=" "*/)
 	{
@@ -183,10 +186,11 @@ namespace wb
 
 #define precent(x, n) (x)<<"("<<100.0*(x)/(n)<<"%)"
 
-	
 
-	
 
+
+
+	/** @} */
 
 }
 

@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -41,7 +41,7 @@ namespace wb
 	template <class KeyT, class DataT> class LHash;
 	template <class KeyT, class DataT> class LHashIter;
 
-	
+
 
 	/// Copy a key
 	template <class KeyT>
@@ -49,7 +49,7 @@ namespace wb
 	/// Copy a string key
 	inline const char *Map_copyKey(const char *key) { return strdup(key); }
 
-	
+
 	/// Free a key.
 	template <class KeyT>
 	inline void Map_freeKey(KeyT key) {};
@@ -117,7 +117,7 @@ namespace wb
 	inline bool Map_equalKey(double key1, double key2) { return fabs(key1 - key2) < 1e-15; }
 	inline bool Map_equalKey(const char *pStr1, const char *pStr2) { return strcmp(pStr1, pStr2) == 0; }
 	///@}
-	
+
 #define HashMask(nbits) (~((~0L)<<(nbits)))
 
 	/** @name HashKey
@@ -196,9 +196,12 @@ namespace wb
 
 	const int cn_MinLHashBits = 3; ///< if the bits of hash less than this value, using linear table
 	const int cn_MaxLHashBits = 31;	///< the maximum bits number support by hast
-	const float cf_HashRatio = 0.8f; ///< fill-rate of the hash. 
+	const float cf_HashRatio = 0.8f; ///< fill-rate of the hash.
 
 
+	/** \addtogroup struct
+    @{
+    */
 	/**
 	 * \brief a linear hash table
 	 */
@@ -208,10 +211,10 @@ namespace wb
 		friend class LHashIter<KeyT, DataT>;
 	public:
 		/// the Unit of hash
-		typedef struct 
+		typedef struct
 		{
-			KeyT key; ///< the key 
-			DataT value; ///< the value 
+			KeyT key; ///< the key
+			DataT value; ///< the value
 		} Unit;
 	protected:
 		int m_nMaxBits; ///< The bit number of the memory buffer. (2^m_nMaxBits is the memory size)
@@ -598,7 +601,7 @@ namespace wb
 		}
 	};
 
-	
+	/** @} */
 
 }
 #endif

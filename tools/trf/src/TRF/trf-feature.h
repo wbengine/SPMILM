@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -30,6 +30,11 @@ namespace trf
 
 #define word_layer 0
 #define class_layer 1
+    /**
+    @defgroup feature Feature
+    this module defines the classes relative to the features.
+    @{
+    */
 	/**
 	 * \brief define a sequence including the word sequence and class sequence
 	 */
@@ -67,7 +72,7 @@ namespace trf
 		/// transform the word sequence (form file) to Seq
 		void Set(Array<int> &aInt, Vocab *pv);
 		void Set(int *pInt, int nLen, Vocab *pv);
-		/// Random 
+		/// Random
 		void Random(Vocab *pv);
 		/// set the class based the word sequence
 		void SetClass(Vocab *pv);
@@ -110,7 +115,7 @@ namespace trf
 	*
 	* using "w" denotes the word, "c" denote the class, "-" denote the skip, and "0-9" in "[]" denote the order
 	* different orders correspond to different template
-	* support the skip-gram, such as : 
+	* support the skip-gram, such as :
 	*	-# "w[3]" (word-3gram); "c[2]" (class-2gram); "w[1:5]" (word ngram with order 1 to 5)
 	*	-# "w[2]-[2]w[1]" (skip-word-3gram, ww--w);
 	*   -# "w[2]-[1]c[2]" (skip-word-class-gram, ww--cc);
@@ -124,7 +129,7 @@ namespace trf
 		int m_nMaxOrder; ///< the ngram maximum order, including the skip distance
 		int m_nNum; ///< the ngram number
 		Array<int> m_aCutoff; ///< cutoff setting for different order
-		Trie<VocabID, int> *m_ptrie; ///< index all the features. 
+		Trie<VocabID, int> *m_ptrie; ///< index all the features.
 
 		Array<FeatStyle*> m_aStyleInfo;
 
@@ -153,7 +158,7 @@ namespace trf
 		int CutoffFeat();
 		/// Find the corresponding feature using a key. This will return the beg/end ngram
 		void Find(Array<int> &afeat, Array<int> &key, bool bBeg, bool bEnd);
-		/// Find the ngram feature with a fixed order. 
+		/// Find the ngram feature with a fixed order.
 		void Find(Array<int> &afeat, Seq &seq, int pos, int order);
 		/// Find all the feature in the sequence
 		void Find(Array<int> &afeat, Seq &seq);
@@ -193,7 +198,7 @@ namespace trf
 		int GetMaxOrder();
 		/// Get number
 		int GetNum() const { return m_nTotalNum;  }
-		/// Find the ngram feature with a fixed order. 
+		/// Find the ngram feature with a fixed order.
 		void Find(Array<int> &afeat, Seq &seq, int pos, int order);
 		/// Find all the feature in the sequence
 		void Find(Array<int> &afeat, Seq &seq);
@@ -210,4 +215,5 @@ namespace trf
 		/// Read the features
 		void ReadT(File &file, PValue *pValue = NULL);
 	};
+	/** @} */
 }

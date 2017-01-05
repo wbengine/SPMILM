@@ -9,16 +9,16 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
 
 
 /**
- * \file 
+ * \file
  * \author WangBin
  * \date 2013-9-23
  * \brief heap, using a linear array. It can be used to sort values.
@@ -29,6 +29,9 @@
 
 namespace wb
 {
+    /** \addtogroup struct
+    @{
+    */
 	/// heap unit
 	template <typename TValue, typename TWeight>
 	class _wb_HEAP_UNIT_
@@ -45,20 +48,24 @@ namespace wb
 			w = unit.w;
 		}
 	};
+	/** @} */
 
 	typedef unsigned short _wb_HEAP_MODE_; ///< heap model, can be one of { HEAPMODE_MAXHEAP,HEAPMODE_MINHEAP }
 /// max heap, used to sort from large to small
-#define HEAPMODE_MAXHEAP	0x0001	
+#define HEAPMODE_MAXHEAP	0x0001
 /// min heap, used to sort from samll to large
-#define HEAPMODE_MINHEAP	0x0002	
+#define HEAPMODE_MINHEAP	0x0002
 
 /// heap get father index
-#define wbHeap_PARENT(i) ((i)/2)  
+#define wbHeap_PARENT(i) ((i)/2)
 /// heap Right index
-#define wbHeap_RIGHT(i) (2*(i)+1) 
+#define wbHeap_RIGHT(i) (2*(i)+1)
 /// heap Left index
-#define wbHeap_LEFT(i) (2*(i))    
+#define wbHeap_LEFT(i) (2*(i))
 
+    /** \addtogroup struct
+    @{
+    */
 	/// heap
 	/**
 		- make sure the value has the operation =��
@@ -196,6 +203,7 @@ namespace wb
 		/// compare function for minimum heap
 		inline static bool MinHeapCompare(TWeight p_n, TWeight p_nParent) { return p_n < p_nParent; }
 	};
+	/** @} */
 }
 
 #endif

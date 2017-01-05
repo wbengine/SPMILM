@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -24,6 +24,11 @@ namespace trf
 {
 
 
+    /**
+    @defgroup model Model
+    The module defines the model, which includes the parameters and the sampling algorithm.
+    @{
+    */
 	class Model;
 
 	/**
@@ -65,9 +70,9 @@ namespace trf
 	public:
 		/// constructor
 		Model(Vocab *pv) :
-			m_pFeat(NULL), 
-			m_maxlen(0), 
-			m_pVocab(pv), 
+			m_pFeat(NULL),
+			m_maxlen(0),
+			m_pVocab(pv),
 			m_AlgNode(this){
 			m_nLenJumpAccTimes = 0;
 			m_nLenJumpTotalTime = 0;
@@ -189,7 +194,7 @@ namespace trf
 		/// [sample] given c_i, summate the probabilities of x_i, i.e. P(c_i)
 		LogP GetMarginalProbOfC(Seq &seq, int nPos);
 		/// [sample] Sample the c_i at position nPos without x_i.
-		/* the only differnece with ProposeC0 is than 
+		/* the only differnece with ProposeC0 is than
 		   SampleC will accept the current class after propose it.
 		   While ProposeC0 not.
 		   ProposeC0 used in local jump. It cannot accept the propose c0 as there is no intial value of c_i.
@@ -253,7 +258,7 @@ namespace trf
 						<< seq.x[class_layer][nPos] << ")");
 				}
 			}
-			
+
 			return aLogps[idx];
 		}
 
@@ -275,7 +280,7 @@ namespace trf
 		}
 		void SamplePos(Seq &seq, int nPos)
 		{
-			for (int times = 0; times < m_nMHtimes; times++) 
+			for (int times = 0; times < m_nMHtimes; times++)
 			{
 
 				VocabID old_c = seq.x[class_layer][nPos];
@@ -316,21 +321,21 @@ namespace trf
 // 			VocabID C0 = LogLineSampling(vlogps_c.GetBuf(), vlogps_c.GetSize());
 // 			LogP gci = vlogps_c[ci];
 // 			LogP gc0 = vlogps_c[C0];
-// 
+//
 // 			VocabID wi = seq.x[word_layer][nPos];
 // 			VocabID w0;
 // 			seq.x[class_layer][nPos] = ci;
 // 			LogP gwi_ci = ProposeW0(wi, seq, nPos, false);
 // 			seq.x[class_layer][nPos] = C0;
 // 			LogP gw0_c0 = ProposeW0(w0, seq, nPos, true);
-// 
+//
 // 			seq.x[class_layer][nPos] = ci;
 // 			seq.x[word_layer][nPos] = wi;
 // 			LogP pold = GetReducedModel(seq, nPos);
 // 			seq.x[class_layer][nPos] = C0;
 // 			seq.x[word_layer][nPos] = w0;
 // 			LogP pnew = GetReducedModel(seq, nPos);
-// 			
+//
 // 			LogP acclogp = pnew + gci + gwi_ci - (pold + gc0 + gw0_c0);
 // 			if (Acceptable(LogP2Prob(acclogp))) {
 // 				m_nSampleHAccTimes++;
@@ -344,4 +349,5 @@ namespace trf
 // 			m_nSampleHTotalTimes++;
 		}
 	};
+	/** @} */
 }

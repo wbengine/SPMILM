@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -36,6 +36,15 @@ namespace wb
 	template <class T> T MatVec2(MatShell<T> &m, VecShell<T> &v1, VecShell<T> &v2);
 
 
+	/**
+    \defgroup struct Related Data Structure
+    In this module, we defined some useful data structures which will be applied in the algorithm: \n
+    Mat/Vec: an application of matrix calculation \n
+    Heap: an application of Max-Heap or Min-Heap, used to commit a heap sort. \n
+    Lhash: linear hash table, the size will dynamically adjust when elements are added/deleted \n
+    Trie: a prefix tree structure. For the children of a same node, the keys are of the same prefix（the key of their parent)
+    @{
+    */
 	template <class T>
 	/**
 	 * \class
@@ -75,7 +84,7 @@ namespace wb
 				sum += m_pBuf[i];
 			return sum;
 		}
-		
+
 	};
 
 	template <class T>
@@ -214,7 +223,7 @@ namespace wb
 	void VecAdd(VecShell<T> &res, VecShell<T> &v1, VecShell<T> &v2)
 	{
 		if (v1.GetSize() != v2.GetSize() || res.GetSize() != v1.GetSize()) {
-			lout_error("[VecAdd] Vec Size are not equal: v1.size=" 
+			lout_error("[VecAdd] Vec Size are not equal: v1.size="
 				<< v1.GetSize() << " v2.size=" << v2.GetSize() << " res.size=" << res.GetSize());
 		}
 		for (int i = 0; i < res.GetSize(); i++) {
@@ -516,7 +525,7 @@ namespace wb
 	{
 		if (m_nXDim != m.m_nXDim || m_nYDim != m.m_nYDim || m_nZDim != m.m_nZDim)
 			return false;
-		
+
 		for (int i = 0; i < GetSize(); i++) {
 			if (m_pBuf[i] != m.m_pBuf[i])
 				return false;
@@ -562,6 +571,7 @@ namespace wb
 		Reset(m.GetXDim(), m.GetYDim(), m.GetZDim());
 		memcpy(this->m_pBuf, m.GetBuf(), sizeof(T)*m.GetSize());
 	}
+	/** @} */
 }
 
 #endif

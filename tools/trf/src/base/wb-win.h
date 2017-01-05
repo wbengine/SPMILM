@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -20,7 +20,7 @@
 * \author WangBin
 * \date 2016-04-28
 * \brief Provide the toolkits for cmd window of window platform.
-* 
+*
 * the tools include:
 *	+# title toolkits, output info to the title of cmd window (such as precent(%) information)
 */
@@ -51,6 +51,10 @@ using namespace std;
 
 namespace wb
 {
+    /** \addtogroup system
+    @{
+    */
+
 	const int cn_title_max_len = 500;
 
 	/**
@@ -104,7 +108,7 @@ namespace wb
 		/// record end and return the time
 		clock_t End();
 		/// get the time, but don't stop recording
-		clock_t Get(); 
+		clock_t Get();
 		/// wait for sveral millissecond
 		void Sleep(clock_t n);
 		/// transform the clock_t to second
@@ -160,4 +164,6 @@ namespace wb
 	void outPrecent(ifstream &ifile, bool bNew = false, const char* title = "Process");
 	/// print precent in the cmd window
 	void outPrecent(FILE *fp, bool bNew = false, const char* title = "Process");
+
+	/** @} */
 }

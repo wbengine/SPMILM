@@ -9,9 +9,9 @@
 // limitations under the License.
 //
 // Copyright 2014-2015 Tsinghua University
-// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou) 
+// Author: wb.th08@gmail.com (Bin Wang), ozj@tsinghua.edu.cn (Zhijian Ou)
 //
-// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above 
+// All h, cpp, cc, and script files (e.g. bat, sh, pl, py) should include the above
 // license declaration. Different coding language may use different comment styles.
 
 
@@ -28,7 +28,7 @@
 
 #ifndef _WB_VECTOR_H_
 #define _WB_VECTOR_H_
-//#include <conio.h> 
+//#include <conio.h>
 #include <iostream>
 #include <cmath>
 #include <cstring>
@@ -59,12 +59,15 @@ namespace wb
 	/// transform the bit to memory size
 #define VECTOR_bits2Size(n) (1<<n)
 
+    /** \addtogroup struct
+    @{
+    */
 	template <typename T>
 	/**
 	* \date 2016-04-28
 	* \author Wangbin
 	* \brief this is the basic class of Array/Stack/Queue. Realize the dynamic memory management
-	* 
+	*
 	* If the size is full, then we re-new a new memory with double current memory size.
 	*/
 	class Vector
@@ -95,21 +98,21 @@ namespace wb
 		/// get the value at position i
 		inline T& Get(int i)
 		{
-			
+
 			if (i<0) {
 				i = 0;
 			}
 
 			int nSize = VECTOR_bits2Size(m_nBits);
 
-			if (i >= nSize) 
+			if (i >= nSize)
 			{
 				int nNewBits = Size2Bits(i + 1);
 
 				T *pNew = new T[VECTOR_bits2Size(nNewBits)];
 				//memset(pNew+m_nBufferSize, 0, sizeof(T)*nStepNum*m_nBufferStep);
 
-				
+
 				for (int n = 0; n<nSize; n++)
 					pNew[n] = m_pBuffer[n];
 
@@ -184,7 +187,7 @@ namespace wb
 		{
 			p_pt = m_pBuffer;
 			m_pBuffer = NULL;
-			new (this) Vector();  
+			new (this) Vector();
 		}
 	};
 
@@ -202,7 +205,7 @@ namespace wb
 	class Array : public Vector<T>
 	{
 	public:
-		int m_nTop; ///< Record the top of the array. 
+		int m_nTop; ///< Record the top of the array.
 	public:
 		/// constructor
 		Array(int size = DEFAULE_VECTOR_SIZE) : Vector<T>(size)
@@ -260,7 +263,7 @@ namespace wb
 			m_nTop = array.m_nTop;
 		}
 		/// Copy the array to current array
-		void Copy(const T* pbuf, int n) 
+		void Copy(const T* pbuf, int n)
 		{
 			Clean();
 			for (int i = 0; i < n; i++)
@@ -274,7 +277,7 @@ namespace wb
 		}
 		/// overload operator =
 		void operator = (const Array<T> &array) { Copy(array); }
-		/// overload transite operator 
+		/// overload transite operator
 		operator T* () { return this->GetBuffer(); }
 		/// output the array
 		void Output(ostream &os)
@@ -326,7 +329,7 @@ namespace wb
 			return this->Get(idx);
 		}
 		/// Get the minine value
-		T Min(int &idx) 
+		T Min(int &idx)
 		{
 			if (GetNum() == 0) {
 				idx = -1;
@@ -371,7 +374,7 @@ namespace wb
 	/**
 	* \class Stack
 	* \date 2016-04-28
-	* \brief A dynamic stack. 
+	* \brief A dynamic stack.
 	* \author Wangbin
 	*/
 	template <typename T>
@@ -420,7 +423,7 @@ namespace wb
 	* \brief  A queue based the dynamic memory mangement.
 	* \date 2016-04-28
 	* \author WangBin
-	* 
+	*
 	*	This is not a circular quque.
 	*	As ar result, the memory size will increase following the values added to the queue.
 	*/
@@ -438,7 +441,7 @@ namespace wb
 		}
 		/// clean the queue. Donot release the memory
 		void Clean() { m_nTop = 0; m_nBottom = 0; }
-		/// Add a value into queue	
+		/// Add a value into queue
 		void In(T p_t)
 		{
 			this->Get(m_nTop) = p_t;
@@ -469,7 +472,7 @@ namespace wb
 	* \date 2016-04-28
 	* \brief Circular queue
 	* \author WangBin
-	* 
+	*
 	*  For circular queue, we need indicate the size of a queue beforhead.
 	*/
 	template <typename T>
@@ -697,7 +700,7 @@ namespace wb
 			}
 
 			p[last] = p[first];
-			
+
 		}
 		p[first] = key;
 		Qsort(p, low, first - 1, compar);
@@ -710,8 +713,8 @@ namespace wb
 		Qsort(a.GetBuffer(), 0, a.GetNum() - 1, compar);
 	}
 
-	
-	
+
+	/** @} */
 }
 
 #endif
