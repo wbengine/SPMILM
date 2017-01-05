@@ -1,0 +1,17 @@
+# files
+*.o
+*.pyc
+
+
+# svn
+.svn
+.directory
+
+# tools
+/tools/trf/bin
+
+
+#egs
+/egs/ptb_wsj0/*/
+!/egs/ptb_wsj0/data/
+/egs/chime4/*/
