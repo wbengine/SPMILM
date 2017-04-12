@@ -41,6 +41,7 @@ namespace trf
 		m_logz.Reset(m_maxlen + 1);
 		m_zeta.Reset(m_maxlen + 1);
 		m_pi.Fill(1);
+		m_pi[0] = 0;
 		m_logz.Fill(0);
 		m_zeta.Fill(0);
 
@@ -49,6 +50,25 @@ namespace trf
 		m_matLenJump.Fill(0);
 		for (int i = 1; i < m_matLenJump.GetRow(); i++) {
 			for (int j = max(1, i - 1); j <= min(m_matLenJump.GetCol()-1, i + 1); j++) {
+				m_matLenJump[i][j] = 1;
+			}
+			m_matLenJump[i][i] = 0; // avoid the self-jump.
+			LineNormalize(m_matLenJump[i].GetBuf(), m_matLenJump.GetCol());
+		}
+	}
+	void Model::ReviseLen(int maxlen)
+	{
+		m_maxlen = maxlen;
+		m_maxSampleLen = (int)(1.02 * maxlen);
+
+		if (maxlen <= 0)
+			return;
+
+		// length jump probability
+		m_matLenJump.Reset(m_maxSampleLen + 1, m_maxSampleLen + 1);
+		m_matLenJump.Fill(0);
+		for (int i = 1; i < m_matLenJump.GetRow(); i++) {
+			for (int j = max(1, i - 1); j <= min(m_matLenJump.GetCol() - 1, i + 1); j++) {
 				m_matLenJump[i][j] = 1;
 			}
 			m_matLenJump[i][i] = 0; // avoid the self-jump.
@@ -748,5 +768,142 @@ namespace trf
 			}
 			lout << endl;
 		}
+	}
+
+	LogP Model::AISNormGlobal(int nChain, int nInter)
+	{
+		int nParamsNum = GetParamNum();
+
+		this->ExactNormalize(1);
+
+		Vec<PValue> vParamsPn(nParamsNum);
+		Vec<PValue> vParamsP0(nParamsNum);
+		Vec<PValue> vParamsCur(nParamsNum);
+		this->GetParam(vParamsP0.GetBuf());
+		Vec<PValue> vLogzPn(m_maxlen + 1);
+		Vec<PValue> vLogzP0(m_maxlen + 1);
+		Vec<PValue> vLogzCur(m_maxlen + 1);
+		vLogzP0.Copy(m_logz);
+
+		/* set the P_n */
+		/* Set all the unigram values */
+		lout << "AISNorm: Using all the unigram." << endl;
+		vParamsPn.Fill(0);
+		Seq seq(10);
+		seq.x.Fill(0);
+		Vec<LogP> aWordLogp(m_pVocab->GetSize()); ///< record the log-prob for each word at each position
+		for (int w = 0; w < m_pVocab->GetSize(); w++) {
+			seq.x[word_layer][1] = w;
+			seq.x[class_layer][1] = m_pVocab->GetClass(w);
+			Array<int> afind;
+			m_pFeat->Find(afind, seq, 1, 1);
+			lout_assert(afind.GetNum() <= 2);
+			double dvalue = 0;
+			for (int i = 0; i < afind.GetNum(); i++) {
+				vParamsPn[afind[i]] = vParamsP0[afind[i]];
+				dvalue += vParamsP0[afind[i]];
+			}
+			aWordLogp[w] = dvalue;
+		}
+		/* calculate the normalization constants of P_n for each length */
+		Vec<LogP> alogz_pn(m_maxlen + 1);
+		LogP logsum = Log_Sum(aWordLogp.GetBuf(), aWordLogp.GetSize());
+		LogLineNormalize(aWordLogp.GetBuf(), aWordLogp.GetSize());  /// normalize, for the following sampling
+		for (int i = 0; i <= m_maxlen; i++) {
+			alogz_pn[i] = i * logsum;
+			//alogz_pn[i] = i * log((double)m_pVocab->GetSize());
+		}
+// 		LogP log_global_Z_pn = LogP_zero;
+// 		for (int j = 1; j <= m_maxlen; j++) {
+// 			LogP temp_logp = Prob2LogP(m_pi[j]) - m_logz[1] - m_zeta[j] + alogz_pn[j];
+// 			log_global_Z_pn = Log_Sum(log_global_Z_pn, temp_logp);
+// 		}
+		LogP log_global_Z_pn = Prob2LogP(Sum(this->m_pi.GetBuf(), m_maxlen+1));
+		vLogzPn.Copy(alogz_pn);
+		lout_variable(log_global_Z_pn);
+
+
+
+		/* In the intermediate models,
+		these models share the features,
+		to save the memory cost.
+		*/
+		Model *pInterModel = new Model(m_pVocab, m_maxlen);
+		pInterModel->m_pFeat = m_pFeat;
+		pInterModel->SetPi(this->m_pi.GetBuf());
+		pInterModel->m_logz.Copy(vLogzPn);
+		//pInterModel->m_zeta.Copy(m_zeta);
+		pInterModel->m_value.Reset(GetParamNum());
+		pInterModel->SetParam(vParamsPn.GetBuf());
+
+		// weight for each chain
+		Vec<LogP> vLogWeight(nChain);
+		Vec<LogP> vLogPOld(nChain);
+		Vec<Seq*> vSeq(nChain);
+		vLogWeight.Fill(0);
+		vLogPOld.Fill(0);
+		vSeq.Fill(NULL);
+		Vec<Prob> sampleProb;
+		sampleProb.Copy(m_pi);
+		LineNormalize(sampleProb.GetBuf(), m_maxlen + 1);
+		for (int i = 0; i < nChain; i++) {
+			vSeq[i] = new Seq( LineSampling(sampleProb.GetBuf(), m_maxlen+1) );
+			// sampling
+			Seq *pSeq = vSeq[i];
+			for (int nPos = 0; nPos < pSeq->GetLen(); nPos++) {
+				pSeq->GetWordSeq()[nPos] = LogLineSampling(aWordLogp.GetBuf(), aWordLogp.GetSize());
+				pSeq->GetClassSeq()[nPos] = m_pVocab->GetClass(pSeq->GetWordSeq()[nPos]);
+			}
+			vLogPOld[i] = pInterModel->GetLogProb(*pSeq) - log_global_Z_pn;
+		}
+
+		// for each intermediate distribution
+		lout.Progress(0, true, nInter, "AIS");
+		for (int t = nInter - 1; t >= 0; t--) {
+			PValue* pParamsCur = vParamsCur.GetBuf();
+			PValue *pP0 = vParamsP0.GetBuf();
+			PValue *pPn = vParamsPn.GetBuf();
+
+			// get the intermediate parameters
+			double beta = GetAISFactor(t, nInter);
+			for (int i = 0; i < nParamsNum; i++)
+				pParamsCur[i] = pP0[i] * (1 - beta) + pPn[i] * beta;
+			pInterModel->SetParam(pParamsCur);
+
+			for (int i = 1; i <= m_maxlen; i++)
+				vLogzCur[i] = vLogzP0[i] * (1 - beta) + vLogzPn[i] * beta;
+			pInterModel->m_logz.Copy(vLogzCur);
+
+#pragma omp parallel for
+			for (int k = 0; k < nChain; k++) { // for each chain
+				/* compute the weight */
+				LogP rate = pInterModel->GetLogProb(*vSeq[k]) - vLogPOld[k];
+				vLogWeight[k] += rate;
+
+
+				/* sample sequence*/
+				pInterModel->Sample(*vSeq[k]);
+				vLogPOld[k] = pInterModel->GetLogProb(*vSeq[k]);
+			}
+			
+
+			lout.Progress(nInter - t);
+		}
+
+		pInterModel->m_pFeat = NULL; // avoid to release the feature buffer
+		SAFE_DELETE(pInterModel);
+		for (int i = 0; i < nChain; i++) {
+			SAFE_DELETE(vSeq[i]);
+		}
+
+
+		LogP logz = Log_Sum(vLogWeight.GetBuf(), vLogWeight.GetSize()) - Prob2LogP(nChain);
+		lout << "logz = " << logz << " logw= ";
+		for (int i = 0; i < vLogWeight.GetSize(); i++) {
+			lout << vLogWeight[i] << " ";
+		}
+		lout << endl;
+
+		return logz;
 	}
 }

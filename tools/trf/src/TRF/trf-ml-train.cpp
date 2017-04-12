@@ -49,6 +49,13 @@ namespace trf
 
 		if (m_pModel->GetMaxLen() <= 0) {
 			lout_warning("[MLfunc] Reset: Re-set the model with length=" << nMaxLen);
+			const char* strNote = 
+				"------------  [ Note ] --------------\n"
+				"As the inital len is 0, then set len to the max-len of corpus\n"
+				"1. If the empirical pi is too small, please turn down the len manully\n"
+				"2. If the NLL is unreasonablly large, this is because that the pi for some length is to small (close to zero),"
+				"please turn down the len manully";
+			lout << strNote << endl;
 			m_pModel->Reset(m_pModel->GetVocab(), nMaxLen);
 		}
 		else if (nMaxLen != m_pModel->m_maxlen) {

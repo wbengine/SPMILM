@@ -182,7 +182,7 @@ namespace wb
 		///使用出现频率进行简单的分类，不需要迭代
 		void SimpleCluster();
 	};
-	/** @} */s
+	/** @} */
 }
 
 #endif

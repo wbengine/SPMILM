@@ -52,6 +52,15 @@ namespace trf
 		}
 		return sum;
 	}
+
+	template <typename T>
+	T Sum(T *p, int n) {
+		T sum = 0;
+		for (int i = 0; i < n; i++) {
+			sum += p[i];
+		}
+		return sum;
+	}
 	
 	LogP LogLineNormalize(LogP* pdProbs, int nNum);
 	

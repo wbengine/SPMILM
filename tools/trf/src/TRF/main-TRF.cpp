@@ -41,6 +41,9 @@ int cfg_nAIS_inter_num = 0;
 int cfg_norm_lenmin = 1;
 int cfg_norm_lenmax = -1;
 
+/* global normalization */
+char *cfg_norm_global = NULL;
+
 char *cfg_pathLenFile = NULL;
 
 Option opt;
@@ -48,6 +51,8 @@ Option opt;
 const char *cfg_strHelp = "[Usage] : \n"
 "Normalizing: \n"
 "  trf -vocab [vocab] -read [model] -write [output model] -norm-method [Exact/AIS]\n"
+"Calculate the global normalization constants: \n"
+"  trf -vocab [vocab] -read [model] -write [output model] -norm-global [Exact/AIS] -norm-len-max [max_len]\n"
 "Calculate log-likelihood:\n"
 "  trf -vocab [vocab] -read [model] -test [txt-id-file]\n"
 "language model rescoring:\n"
@@ -62,6 +67,7 @@ double CalculateLL(Model &m, CorpusTxt *pCorpus, int nCorpusNum, double *pPPL = 
 void WordStr2ID(Array<VocabID> &aIDs, Array<String> &aStrs, LHash<const char*, VocabID> &vocabhash);
 void LMRescore(Model &m, const char* pathTest);
 void ModelNorm(Model &m, const char *type);
+void ModelGlobal(Model &m, const char *type);
 void ModelRevisePi(Model &m, const char *pathLenFile);
 
 _wbMain
@@ -79,11 +85,13 @@ _wbMain
 	opt.Add(wbOPT_STRING, "lmscore-debug", &cfg_writeLmscoreDebug, "[LMrescore] output the lmscore of each word for word-level combination");
 	opt.Add(wbOPT_STRING, "lmscore-test-id", &cfg_writeTestID, "[LMrescore] output the vocab-id of test file");
 
-	opt.Add(wbOPT_STRING, "norm-method", &cfg_norm_method, "[Norm] method: Exact or AIS");
+	opt.Add(wbOPT_STRING, "norm-method", &cfg_norm_method, "[Norm] method: Exact/AIS");
 	opt.Add(wbOPT_INT, "AIS-chain", &cfg_nAIS_chain_num, "[AIS] the chain number");
 	opt.Add(wbOPT_INT, "AIS-inter", &cfg_nAIS_inter_num, "[AIS] the intermediate distribution number");
 	opt.Add(wbOPT_INT, "norm-len-min", &cfg_norm_lenmin, "[Norm] min-length");
 	opt.Add(wbOPT_INT, "norm-len-max", &cfg_norm_lenmax, "[Norm] max-length");
+
+	opt.Add(wbOPT_STRING, "norm-global", &cfg_norm_global, "[Global Norm] method: Exact/AIS");
 
 	opt.Add(wbOPT_STRING, "len-file", &cfg_pathLenFile, "[Revise pi] a txt-id-file used to summary pi");
 
@@ -107,6 +115,11 @@ _wbMain
 	/* Operation 0: normalization */
 	if (cfg_norm_method) {
 		ModelNorm(m, cfg_norm_method);
+	}
+
+	/* Operation 0.5: normalization global */
+	if (cfg_norm_global) {
+		ModelGlobal(m, cfg_norm_global);
 	}
 
 	/* Operation 3: revise pi*/
@@ -280,6 +293,71 @@ void ModelNorm(Model &m, const char *type)
 	else {
 		lout_error("Unknown method: " << type);
 	}
+}
+
+void ModelGlobal(Model &m, const char *type)
+{
+	LogP logZ = LogP_zero;
+
+	int old_len = m.GetMaxLen();
+	if (cfg_norm_lenmax != -1) {
+		lout_exe << "revise the maxlen = " << cfg_norm_lenmax << endl;
+		// only revise the length-jump-distribution Gamma(k,j)
+		m.ReviseLen(cfg_norm_lenmax);
+	}
+
+	String strType = type;
+	strType.Tolower();
+	if (strType == "exact") {
+		lout_exe << "Exact Global Normalization..." << endl;
+		Vec<LogP> zeta;
+		zeta.Copy(m.m_zeta);
+		m.ExactNormalize();
+
+		logZ = LogP_zero;
+		for (int j = 1; j <= m.GetMaxLen(); j++) {
+			logZ = Log_Sum(logZ, Prob2LogP(m.m_pi[j]) - zeta[j] + m.m_logz[j] - m.m_logz[1]);
+		}
+	}
+	else if (strType == "ais") {
+		lout_variable(m.ExactNormalize(1));
+		if (cfg_nAIS_chain_num <= 0) {
+			lout_exe << "[Input] AIS chain number = ";
+			cin >> cfg_nAIS_chain_num;
+		}
+		if (cfg_nAIS_inter_num <= 0) {
+			lout_exe << "[Input] AIS intermediate distribution number = ";
+			cin >> cfg_nAIS_inter_num;
+		}
+		lout_exe << "AIS normalization..." << endl;
+		lout_variable(cfg_nAIS_chain_num);
+		lout_variable(cfg_nAIS_inter_num);
+
+		srand(time(NULL));
+		logZ = m.AISNormGlobal(cfg_nAIS_chain_num, cfg_nAIS_inter_num);
+	}
+	else {
+		lout_error("Unknown method: " << type);
+	}
+
+	if (cfg_norm_lenmax != -1) {
+		m.ReviseLen(old_len);
+
+		double pi_sum = 0;
+		for (int j = cfg_norm_lenmax + 1; j <= old_len; j++) {
+			pi_sum += m.m_pi[j];
+		}
+		lout_exe << "logZ before add pi_sum = " << logZ << endl;
+		lout_exe << "add the exteral pi_sum = " << pi_sum << endl;
+		logZ = Log_Sum(logZ, Prob2LogP(pi_sum));
+	}
+
+	lout_variable(logZ)
+	for (int j = 1; j <= m.GetMaxLen(); j++) {
+		m.m_logz[j] += logZ;
+		m.m_zeta[j] += logZ;
+	}
+
 }
 
 void ModelRevisePi(Model &m, const char *pathLenFile)

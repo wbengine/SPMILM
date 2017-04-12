@@ -106,6 +106,8 @@ namespace trf
 		int GetParamNum() const { return (m_pFeat) ? m_pFeat->GetNum() : 0; }
 		/// reset, the maxlen is the length excluding the beg/end symbols.
 		void Reset(Vocab *pv, int maxlen);
+		/// revise the length
+		void ReviseLen(int maxlen);
 		/// Set the parameters
 		virtual void SetParam(PValue *pValue);
 		/// Get the paremetre vector
@@ -208,6 +210,7 @@ namespace trf
 		/// perform AIS to calculate the normalization constants, return the logz of given length
 		LogP AISNormalize(int nLen, int nChain, int nInter);
 		void AISNormalize(int nLenMin, int nLenMax, int nChain, int nInter);
+		LogP AISNormGlobal(int nChain, int nIter);
 	};
 
 	/**
